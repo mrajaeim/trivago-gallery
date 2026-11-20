@@ -10,6 +10,7 @@ import {
   query,
   registerPersistedQuery,
 } from "@/lib/trivago/apollo";
+import { galleryImageUrl } from "@/lib/trivago/gallery-shared";
 
 // Placeholder selection set. The registered hash is the query trivago runs.
 export const accommodationHighlights = gql`
@@ -86,7 +87,7 @@ export type HighlightView = {
   title: string;
   description: string;
   sentiment: HighlightSentiment;
-  imageId: string | null;
+  imageSrc: string | null;
 };
 
 export type HighlightsResult =
@@ -101,11 +102,12 @@ function readString(value: unknown): string | null {
   return typeof value === "string" && value.length > 0 ? value : null;
 }
 
-function readImageId(highlight: Record<string, unknown>): string | null {
+function readImageSrc(highlight: Record<string, unknown>): string | null {
   if (!isRecord(highlight.visualInfo) || !isRecord(highlight.visualInfo.image)) {
     return null;
   }
-  return readString(highlight.visualInfo.image.imageId);
+  const urlTail = readString(highlight.visualInfo.image.urlTail);
+  return urlTail ? galleryImageUrl(urlTail, 800) : null;
 }
 
 function readHighlight(value: unknown): HighlightView | null {
@@ -126,7 +128,7 @@ function readHighlight(value: unknown): HighlightView | null {
     title,
     description,
     sentiment,
-    imageId: readImageId(value),
+    imageSrc: readImageSrc(value),
   };
 }
 

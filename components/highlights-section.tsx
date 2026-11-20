@@ -1,3 +1,6 @@
+import Link from "next/link";
+import { CdnImage } from "@/components/cdn-image";
+import { accommodationPath } from "@/lib/trivago/gallery-shared";
 import {
   fetchAccommodationHighlights,
   type HighlightView,
@@ -24,9 +27,19 @@ function sentimentClass(sentiment: HighlightView["sentiment"]) {
   return "bg-zinc-100 text-zinc-700 dark:bg-zinc-900 dark:text-zinc-300";
 }
 
-function HighlightCard({ highlight }: { highlight: HighlightView }) {
+function HighlightCard({
+  highlight,
+  nsid,
+}: {
+  highlight: HighlightView;
+  nsid: Nsid;
+}) {
   return (
-    <article className="flex flex-col gap-3 rounded-2xl border border-black/8 bg-white p-5 dark:border-white/12 dark:bg-zinc-950">
+    <Link
+      href={accommodationPath(nsid.ns, nsid.id)}
+      scroll={false}
+      className="flex flex-col gap-3 rounded-2xl border border-black/8 bg-white p-5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black dark:border-white/12 dark:bg-zinc-950 dark:focus-visible:outline-white"
+    >
       <div className="flex items-start justify-between gap-4">
         <h2 className="text-lg font-semibold tracking-tight text-black dark:text-zinc-50">
           {highlight.title}
@@ -37,15 +50,20 @@ function HighlightCard({ highlight }: { highlight: HighlightView }) {
           {sentimentLabel(highlight.sentiment)}
         </span>
       </div>
+      {highlight.imageSrc ? (
+        <CdnImage
+          src={highlight.imageSrc}
+          width={16}
+          height={10}
+          alt=""
+          className="h-auto w-full rounded-xl object-cover"
+        />
+      ) : null}
       <p className="text-base leading-7 text-zinc-600 dark:text-zinc-400">
         {highlight.description}
       </p>
-      {highlight.imageId ? (
-        <p className="text-sm text-zinc-500 dark:text-zinc-400">
-          Image id {highlight.imageId}
-        </p>
-      ) : null}
-    </article>
+      <p className="text-sm font-medium text-black dark:text-zinc-50">Photos</p>
+    </Link>
   );
 }
 
@@ -101,7 +119,7 @@ export async function HighlightsSection({ nsid }: { nsid: Nsid }) {
         Live request succeeded. {result.highlights.length} highlights.
       </p>
       {result.highlights.map((highlight) => (
-        <HighlightCard key={highlight.id} highlight={highlight} />
+        <HighlightCard key={highlight.id} highlight={highlight} nsid={nsid} />
       ))}
     </div>
   );
