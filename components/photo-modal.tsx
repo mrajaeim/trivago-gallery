@@ -34,21 +34,33 @@ function shareUrl(href: string): string {
   return new URL(href, window.location.origin).toString();
 }
 
-async function sharePage(href: string) {
+export async function sharePage(href: string) {
   const url = shareUrl(href);
   if (typeof navigator.share === "function") {
     try {
-      await navigator.share({ url, title: document.title });
+      await navigator.share({
+        url,
+        title: typeof document === "undefined" ? undefined : document.title,
+      });
       return "shared";
     } catch (error) {
-      if (error instanceof DOMException && error.name === "AbortError") {
+      if (
+        typeof error === "object" &&
+        error !== null &&
+        "name" in error &&
+        error.name === "AbortError"
+      ) {
         return "cancelled";
       }
     }
   }
-  if (typeof navigator.clipboard?.writeText === "function") {
-    await navigator.clipboard.writeText(url);
-    return "copied";
+  try {
+    if (typeof navigator.clipboard?.writeText === "function") {
+      await navigator.clipboard.writeText(url);
+      return "copied";
+    }
+  } catch {
+    return "failed";
   }
   return "failed";
 }
@@ -61,18 +73,21 @@ export function PhotoModalToolbar({
   onToggleFullScreen,
   onClose,
 }: {
-  href: string;
+  href: string | null;
   fullScreen: boolean;
   shareStatus: "idle" | "copied" | "failed";
   onShare: () => void;
   onToggleFullScreen: () => void;
   onClose: () => void;
 }) {
+  const destinationReady = href !== null;
+
   return (
     <Stack direction="row" spacing={0.25} sx={{ alignItems: "center" }}>
       <IconButton
         aria-label={shareStatus === "copied" ? "Link copied" : "Share"}
         onClick={onShare}
+        disabled={!destinationReady}
       >
         <ShareIcon />
       </IconButton>
@@ -82,15 +97,21 @@ export function PhotoModalToolbar({
       >
         {fullScreen ? <FullscreenExitIcon /> : <FullscreenIcon />}
       </IconButton>
-      <IconButton
-        component="a"
-        href={href}
-        target="_blank"
-        rel="noopener noreferrer"
-        aria-label="Open in new tab"
-      >
-        <OpenInNewIcon />
-      </IconButton>
+      {destinationReady ? (
+        <IconButton
+          component="a"
+          href={href}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="Open in new tab"
+        >
+          <OpenInNewIcon />
+        </IconButton>
+      ) : (
+        <IconButton aria-label="Open in new tab" disabled>
+          <OpenInNewIcon />
+        </IconButton>
+      )}
       <IconButton aria-label="Close" onClick={onClose} edge="end">
         <CloseIcon />
       </IconButton>
@@ -120,11 +141,14 @@ function RoutedPhotoModalToolbar({
       fullScreen={fullScreen}
       shareStatus={shareStatus}
       onShare={() => {
-        void sharePage(href).then((result) => {
-          if (result === "copied" || result === "failed") {
-            onShareResult(result);
-          }
-        });
+        void sharePage(href).then(
+          (result) => {
+            if (result === "copied" || result === "failed") {
+              onShareResult(result);
+            }
+          },
+          () => onShareResult("failed"),
+        );
       }}
       onToggleFullScreen={onToggleFullScreen}
       onClose={onClose}
@@ -221,7 +245,7 @@ export function PhotoModal({ children }: { children: ReactNode }) {
           <Suspense
             fallback={
               <PhotoModalToolbar
-                href="#"
+                href={null}
                 fullScreen={fullScreen}
                 shareStatus={shareStatus}
                 onShare={() => undefined}
