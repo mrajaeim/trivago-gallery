@@ -1,58 +1,120 @@
 # trivago Gallery
 
-An interactive accommodation photo gallery built with **Next.js App Router**, exploring how **Intercepting Routes** and **Parallel Routes** can create seamless, URL-driven modal experiences without sacrificing traditional page navigation.
+An interactive accommodation gallery built with **Next.js 16, React 19, and TypeScript**, exploring how **Intercepting Routes and Parallel Routes** can create seamless modal experiences while preserving URL-based navigation, deep linking, and browser history.
 
-This project focuses on building a gallery experience where users can explore hotel details, browse and filter photos, and navigate between views while preserving browser history, deep linking, and direct URL access.
+The project demonstrates these routing patterns through a real-world accommodation interface featuring hotel details, a responsive photo gallery, and a swipeable image viewer powered by Embla Carousel.
 
-Accommodation details, images, and highlights are retrieved from trivago's publicly accessible web data.
+Accommodation information and images are retrieved from trivago's web GraphQL endpoints.
 
-## Key Features
+## Project Goals
 
-### Next.js Intercepting & Parallel Routes
+The primary goal is to explore modern Next.js App Router capabilities through a practical frontend implementation.
 
-The main focus of this project is demonstrating how Next.js routing conventions can be used to display the same content in different contexts.
+Rather than building a complete travel-booking application, the project focuses on:
 
-- **Intercepting Routes** — Open accommodation details inside a modal during client-side navigation, instead of navigating to a separate page.
-- **Parallel Routes** — Use the `@modal` slot to render modal content alongside the current page.
-- **Direct URL Access** — Render accommodation details as standalone pages when visiting their URLs directly or refreshing.
-- **URL-Driven Navigation** — Give each accommodation and photo its own shareable URL.
-- **Browser History Support** — Preserve navigation behavior using the Next.js App Router.
+- **Intercepting Routes** — Presenting accommodation content in a modal during client-side navigation while supporting standalone pages.
+- **Parallel Routes** — Rendering modal content alongside the underlying page using a dedicated route slot.
+- **URL-Driven UI** — Keeping accommodation and photo views addressable through meaningful URLs.
+- **Interactive Galleries** — Combining responsive photo grids, category filters, and touch-friendly image navigation.
+- **Performance** — Minimizing unnecessary image downloads, server requests, and client-side work.
+- **Modern React Architecture** — Combining Server Components, Suspense, caching, and focused Client Components.
 
-This approach allows the application to offer an immersive modal experience without sacrificing accessibility, shareability, or standard browser navigation.
+## Features
 
-### Interactive Image Gallery
+### Intercepting Routes & Parallel Routes
 
-The image gallery provides a responsive interface for exploring accommodation photos.
-
-- Responsive image grid with a mosaic layout.
-- Photo filtering by category, including rooms, bathrooms, dining, pools, and more.
-- Dedicated photo views with Previous and Next navigation.
-- Keyboard navigation using arrow keys.
-- Shareable URLs for individual photos.
-- Photo counts, image metadata, and source attribution.
-- Loading skeletons, empty states, and error handling.
-
-The gallery uses URL-based navigation rather than relying entirely on local component state, allowing individual images to remain accessible across refreshes and direct navigation.
-
-### Accommodation Details
-
-Alongside the gallery, the application displays accommodation information retrieved from trivago, including available property details, ratings, amenities, and AI-generated highlights.
-
-These details are used to provide context for the gallery rather than implement a complete hotel-search or booking experience.
-
-## How Intercepting Routes Work
-
-One of the key ideas behind this project is that **the same URL can produce different presentations depending on how the user navigates to it**.
+The application uses Next.js App Router conventions to provide different presentations of the same accommodation content depending on the navigation context.
 
 **Client-side navigation**
 
-When a user clicks an accommodation listing from the home page, Next.js intercepts the route and displays the accommodation details in a modal over the current page.
+Clicking an accommodation listing opens its details inside a modal, preserving the underlying page.
 
-**Direct navigation or refresh**
+**Direct navigation**
 
-When the same accommodation URL is opened directly in a browser, Next.js renders the standalone accommodation page.
+Opening the same accommodation URL in a new tab, or refreshing the page, renders the standalone accommodation view.
 
-Both experiences use the same underlying accommodation view, avoiding the need to maintain separate implementations.
+**Shared implementation**
+
+Both presentations reuse the same accommodation components, avoiding duplicate pages and business logic.
+
+Additional functionality includes:
+
+- URL-based modal navigation.
+- Browser Back/Forward integration.
+- Modal close, share, and standalone-view actions.
+- Direct links to accommodations and individual photos.
+- Loading and error states for asynchronous content.
+
+### Responsive Accommodation Gallery
+
+The gallery provides a responsive photo-browsing experience with:
+
+- A mosaic-style image grid.
+- Category filtering based on accommodation areas.
+- Photo counts and category labels.
+- Individual photo routes and direct links.
+- Image attribution where available.
+- Responsive layouts for mobile and desktop.
+- Loading skeletons and fallback states.
+
+The gallery currently retrieves the first **150 photos** for an accommodation. When the total exceeds the loaded collection, the interface indicates that only part of the gallery is displayed.
+
+### Swipeable Photo Viewer
+
+Individual photos open in a dedicated viewer powered by [Embla Carousel](https://www.embla-carousel.com/).
+
+The viewer supports:
+
+- Touch and drag gestures.
+- Previous and Next navigation.
+- Keyboard arrow navigation.
+- Category-specific photo browsing.
+- Photo position indicators and progress feedback.
+- Responsive image sizing.
+- Reduced-motion preferences.
+- Direct links to individual images.
+
+**Optimized image rendering**
+
+Instead of mounting every full-resolution image, the viewer maintains a small image window around the selected photo.
+
+- The selected photo receives high fetch priority.
+- Adjacent photos are prepared for smooth navigation.
+- Photos farther away use lazy loading or placeholders.
+- Responsive CDN URLs and `srcSet` allow browsers to choose suitable image sizes.
+- Image dimensions help maintain a stable layout.
+
+The slider mounts image elements for at most five nearby slides while retaining lightweight slide containers for the full loaded collection.
+
+**Navigation without repeated gallery requests**
+
+Swiping between already-loaded photos updates the current URL using the browser History API and `replaceState`.
+
+This keeps the address bar synchronized with the selected photo without triggering another Server Component navigation for each swipe.
+
+Replacing the current photo URL also prevents normal Back navigation from stepping through every image viewed in the slider.
+
+Direct visits and page refreshes continue to work through Next.js's dedicated photo routes.
+
+### Accommodation Information
+
+The accommodation card provides context for the gallery, including available:
+
+- Property name and main image.
+- Star classification and guest ratings.
+- Address and location information.
+- Check-in and check-out times.
+- Amenities and property highlights.
+- AI-generated accommodation highlights.
+- Price information, when available.
+
+Long accommodation descriptions use an expandable **Read more / Read less** component that detects text overflow and responds to container resizing and font loading.
+
+Unavailable prices or missing data are presented through appropriate fallback states rather than assumed values.
+
+## How the Routing Works
+
+A key concept behind the project is that **one URL can support different rendering experiences depending on how it is reached**.
 
 ### Route Structure
 
@@ -64,94 +126,169 @@ app/
 ├── @modal/
 │   ├── default.tsx
 │   ├── page.tsx
-│   └── (.)accommodation/
+│   ├── (.)accommodation/
+│   │   └── [ns]/
+│   │       └── [id]/
+│   │           └── page.tsx
+│   └── accommodation/
 │       └── [ns]/
 │           └── [id]/
-│               └── page.tsx
+│               └── photos/
+│                   └── [imageId]/
+│                       └── page.tsx
 │
 └── accommodation/
     └── [ns]/
         └── [id]/
-            ├── page.tsx
             ├── layout.tsx
+            ├── page.tsx
+            ├── error.tsx
+            ├── not-found.tsx
             └── photos/
                 ├── layout.tsx
                 └── [imageId]/
                     └── page.tsx
 ```
 
-The important conventions are:
+### Intercepted Accommodation Route
 
-- `@modal` defines a parallel route slot in the root layout.
-- `(.)accommodation` intercepts navigation to the accommodation route at the same route-segment level.
-- `accommodation/[ns]/[id]` provides the standalone accommodation page.
-- `photos/[imageId]` provides a dedicated page for a selected image.
+```text
+app/@modal/(.)accommodation/[ns]/[id]/page.tsx
+```
 
-The modal slot also includes fallback routes to support navigation outside the intercepted accommodation view.
+The `(.)` convention intercepts client-side navigation to the matching accommodation route.
 
-### Example Navigation
+The `@modal` parallel route slot allows the intercepted view to appear alongside the existing page instead of replacing it.
 
-Starting from:
+### Standalone Accommodation Route
 
-`/`
+```text
+app/accommodation/[ns]/[id]/page.tsx
+```
 
-Clicking an accommodation listing navigates to:
+The standalone route handles direct requests and full-page navigation.
 
-`/accommodation/100/102762`
+Both routes reuse `AccommodationView`, keeping accommodation rendering consistent across presentations.
 
-During client-side navigation, the accommodation appears in a modal.
+### Dedicated Photo Route
 
-Opening that URL directly displays the standalone accommodation page.
+```text
+app/accommodation/[ns]/[id]/photos/[imageId]/page.tsx
+```
 
-Selecting an individual image navigates to:
+Each image has its own URL, allowing visitors to open or share a specific photo directly.
 
-`/accommodation/100/102762/photos/{imageId}`
+The photo layout loads accommodation gallery data and provides it to the client-side photo viewer.
 
-This route renders a dedicated photo-viewing experience with navigation controls.
+### Navigation Example
+
+| Action | URL | Experience |
+|---|---|---|
+| Visit home | `/` | Sample accommodation listing |
+| Click accommodation | `/accommodation/100/102762` | Intercepted modal |
+| Open accommodation URL directly | `/accommodation/100/102762` | Standalone page |
+| Open a photo | `/accommodation/100/102762/photos/{imageId}` | Photo viewer |
+| Swipe to another photo | URL changes to selected image | Viewer updates without refetching the gallery |
+
+This pattern combines contextual navigation with shareable, refresh-safe URLs.
 
 ## Technology Stack
 
 | Technology | Purpose |
 |---|---|
-| Next.js 16 | App Router, Server Components, Intercepting Routes, Parallel Routes |
-| React 19 | UI rendering, Suspense, and component composition |
-| TypeScript | Static typing and domain models |
-| Material UI | Responsive components and styling |
-| Apollo Client | GraphQL integration |
-| GraphQL | Retrieving accommodation gallery data and highlights |
+| Next.js 16 | App Router, Intercepting Routes, Parallel Routes, Server Components |
+| React 19 | Component architecture, Suspense, client-side interactivity |
+| TypeScript | Type safety and domain modeling |
+| Material UI 9 | Responsive layouts and UI components |
+| Embla Carousel | Touch-enabled photo slider |
+| Apollo Client 4 | GraphQL queries and transport integration |
+| GraphQL | Accommodation details, highlights, and image metadata |
 | Vitest | Unit and component testing |
+| GitHub Actions | Automated code verification and deployment |
+| Vercel | Production deployment |
 
 ## Architecture
 
-The application separates data retrieval, data interpretation, and presentation.
+The project separates routing, data access, and user-interface responsibilities.
 
-**App Router (`app/`)**
+```text
+app/                       Next.js routes and layouts
+├── @modal/                 Parallel and intercepted routes
+└── accommodation/          Standalone accommodation and photo pages
 
-Defines standalone pages, dynamic routes, modal interception, and shared layouts.
+components/                UI and interactive components
+├── accommodation-view.tsx Shared accommodation presentation
+├── listing-card.tsx       Accommodation details and highlights
+├── about-summary.tsx      Expandable description
+├── gallery-grid.tsx       Responsive mosaic and filters
+├── gallery-section.tsx    Server-rendered gallery section
+├── photo-browser.tsx      Photo viewer state and controls
+├── photo-slider.tsx       Embla integration and image loading
+├── photo-modal.tsx        Modal presentation and toolbar
+└── cdn-image.tsx          Image rendering and fallbacks
 
-**UI Components (`components/`)**
+lib/trivago/               Data integration
+├── apollo.ts              Apollo client setup
+├── contract.ts            GraphQL request contracts
+├── persisted-link.ts      Persisted-query transport
+├── profile.ts             Accommodation profile loading
+├── highlights.ts          Accommodation highlights
+├── gallery.ts             Image and count queries
+├── gallery-read.ts        Gallery response interpretation
+└── gallery-shared.ts      Shared gallery and URL utilities
+```
 
-Contains the accommodation listing, gallery grid, photo browser, modal, and supporting interface components.
-
-**Data Integration (`lib/trivago/`)**
-
-Handles accommodation data retrieval, persisted GraphQL queries, profile extraction, response validation, and transformation into frontend-friendly models.
-
-### Data Fetching and Rendering
+### Server Components and Suspense
 
 The application primarily retrieves accommodation data in Server Components.
 
-React Suspense boundaries allow different parts of the interface to load independently, while React request memoization and Next.js caching capabilities are used where appropriate.
+React Suspense boundaries allow the accommodation card, page headings, and image gallery to load independently with dedicated fallbacks.
 
-Interactive elements such as category filters, photo navigation, and modal controls are implemented using Client Components.
+Client Components are used for functionality requiring browser APIs or interactive state, including:
 
-The goal is to keep data access on the server while limiting client-side JavaScript to functionality that requires interactivity.
+- Modal controls.
+- Category selection.
+- Embla Carousel.
+- Keyboard and touch navigation.
+- Expandable descriptions.
+- Browser History API integration.
+
+### Data Integration
+
+The application uses trivago GraphQL endpoints to retrieve property profiles, accommodation highlights, gallery images, and image counts.
+
+The integration includes:
+
+- Centralized GraphQL request configuration.
+- Persisted-query identifiers for selected operations.
+- Runtime validation and normalization of external responses.
+- Accommodation identifier checks.
+- Structured error handling and timeouts.
+- Request-scoped deduplication.
+- Next.js caching for accommodation profiles.
+
+Gallery requests use a rolling future stay window as part of the upstream API's compatibility context. This is not a user-selected booking search.
+
+Because the upstream endpoints are undocumented, the data layer is intentionally kept separate from presentation components.
+
+### Image Performance
+
+The viewer combines several optimizations to avoid unnecessary work:
+
+1. **Limited image mounting:** Only nearby slide images are mounted.
+2. **Responsive CDN delivery:** Images can be requested at different widths.
+3. **Fetch prioritization:** The selected image receives higher priority.
+4. **Lazy loading:** Distant images are not downloaded immediately.
+5. **URL synchronization:** Swipe navigation updates the address without a new gallery request.
+6. **Controlled prefetching:** Gallery thumbnail links do not automatically prefetch every individual photo route.
+
+These optimizations are especially useful for accommodations containing more than 100 images.
 
 ## Getting Started
 
-### Prerequisites
+### Requirements
 
-- Node.js compatible with Next.js 16 (Node.js 20.9 or later)
+- **Node.js 24** (recommended to match GitHub Actions)
 - npm
 
 ### Installation
@@ -175,69 +312,93 @@ Start the development server:
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.
+Open [http://localhost:3000](http://localhost:3000).
 
-### Available Commands
+The home page shows a sample accommodation that can be opened in the intercepted modal or through its standalone URL.
+
+## Development Commands
+
+| Command | Description |
+|---|---|
+| `npm run dev` | Start the Next.js development server |
+| `npm run build` | Create an optimized production build |
+| `npm run start` | Serve the production build |
+| `npm run lint` | Run ESLint |
+| `npm run typecheck` | Generate Next.js route types and run TypeScript checks |
+| `npm test` | Execute the Vitest test suite |
+
+The typecheck command runs:
 
 ```bash
-npm run dev      # Start the development server
-npm run build    # Create a production build
-npm run start    # Start the production server
-npm run lint     # Run ESLint
-npm test         # Run Vitest tests
+next typegen && tsc --noEmit
 ```
 
-## Technical Considerations
+Generating Next.js route types before TypeScript validation ensures that global helpers such as `PageProps` and `LayoutProps` are available during clean CI builds.
 
-### Routing and Navigation
+## Testing and Continuous Integration
 
-Intercepting Routes make it possible to provide contextual navigation without losing the benefits of URL-based routing.
+The project includes automated tests covering:
 
-The application deliberately supports both modal and standalone page presentations for accommodation details, while individual photos have dedicated routes.
+- Accommodation profile interpretation.
+- GraphQL request contracts.
+- Gallery response normalization.
+- Photo URL generation and image helpers.
+- Persisted-query error handling and cancellation.
+- Photo navigation and rendering behavior.
+- Modal actions and accessibility attributes.
+- Gallery mosaic calculations.
+- Accommodation loading and fallback states.
 
-### External Data Integration
+### GitHub Actions
 
-The project integrates with trivago's publicly accessible web endpoints, including persisted GraphQL operations and structured accommodation data.
+The workflow in `.github/workflows/ci.yml` runs on pull requests and pushes to `main`.
 
-These endpoints are not provided as a stable, officially supported public API. Their availability, response formats, and persisted-query identifiers may change.
+It uses Node.js 24 and performs:
 
-Requests can therefore fail or return incomplete data. The application includes fallback states and response validation to handle some of these scenarios.
+```bash
+npm ci
+npm run lint
+npm run typecheck
+npm test
+npm run build
+```
 
-The image query currently retrieves up to 150 photos per request, so accommodations with larger galleries may display a partial collection.
+### Vercel Deployment
 
-On the photo page, Embla handles swipe, arrow keys, and the previous/next controls. Only the current image and its neighbors are downloaded. The address bar updates with the history API, so a swipe does not request the gallery again. Direct visits and refreshes still use the photo route. Thumbnail links do not prefetch every photo.
+On pushes to `main`, the deployment job runs after the verification job succeeds.
 
-### Testing
+The workflow uses the Vercel CLI to pull production configuration, build the application, and deploy the prebuilt output.
 
-The project uses Vitest to test important behaviors, including:
+The deployment requires the appropriate GitHub Actions secrets:
 
-- Gallery response interpretation and invalid data handling.
-- Accommodation profile extraction.
-- Persisted GraphQL request cancellation and timeout handling.
-- Photo navigation markup and URL generation.
-- Modal toolbar and sharing behavior.
-- Gallery layout calculations.
+- `VERCEL_TOKEN`
+- `VERCEL_ORG_ID`
+- `VERCEL_PROJECT_ID`
 
-## What This Project Explores
+## Current Limitations
 
-This repository is primarily a practical exploration of modern Next.js routing patterns and their application to real-world interfaces.
+This is a technical demonstration rather than a production hotel-booking platform.
 
-The main engineering goals are:
+- **Unofficial API:** The trivago GraphQL endpoints are not a stable, officially supported public API. Their contracts and availability may change.
+- **Gallery limit:** The current image query retrieves up to 150 photos. Pagination for larger galleries has not yet been implemented.
+- **Sample accommodation:** The home page focuses on a predefined accommodation rather than offering a full hotel-search experience.
+- **External data availability:** Some details, highlights, images, or prices may be unavailable because of upstream API behavior.
+- **Booking functionality:** The project does not implement hotel booking, payment, or live rate comparison.
 
-1. Understand how Intercepting Routes and Parallel Routes work together.
-2. Create a modal experience without duplicating standalone page implementations.
-3. Preserve URL navigation, refresh behavior, and browser history.
-4. Build a responsive, interactive image gallery using real accommodation data.
-5. Combine React Server Components, Suspense, and client-side interactivity.
-
-## References
+## Learning Resources
 
 - [Next.js — Intercepting Routes](https://nextjs.org/docs/app/api-reference/file-conventions/intercepting-routes)
 - [Next.js — Parallel Routes](https://nextjs.org/docs/app/api-reference/file-conventions/parallel-routes)
 - [Next.js — App Router](https://nextjs.org/docs/app)
+- [Next.js — Cache Components](https://nextjs.org/docs/app/getting-started/cache-components)
+- [Embla Carousel](https://www.embla-carousel.com/)
 - [Material UI](https://mui.com/material-ui/)
 - [Apollo Client](https://www.apollographql.com/docs/react/)
 
----
+## Disclaimer
 
-**Disclaimer:** This is an independent educational and technical demonstration. It is not an official trivago application and is not affiliated with or endorsed by trivago.
+This is an independent educational project created to explore Next.js routing patterns, frontend architecture, and image-gallery performance.
+
+It is **not an official trivago application** and is not affiliated with, sponsored by, or endorsed by trivago.
+
+Accommodation information and images remain the property of their respective owners.
