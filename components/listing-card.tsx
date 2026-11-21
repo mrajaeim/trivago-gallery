@@ -2,7 +2,6 @@ import AutoAwesomeOutlinedIcon from "@mui/icons-material/AutoAwesomeOutlined";
 import PlaceOutlinedIcon from "@mui/icons-material/PlaceOutlined";
 import StarIcon from "@mui/icons-material/Star";
 import StarBorderIcon from "@mui/icons-material/StarBorder";
-import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Card from "@mui/material/Card";
@@ -11,8 +10,10 @@ import Divider from "@mui/material/Divider";
 import Skeleton from "@mui/material/Skeleton";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
+import { Suspense } from "react";
 import { CdnImage } from "@/components/cdn-image";
 import { CardLink } from "@/components/next-link";
+import { accommodationFallbackLabel } from "@/lib/trivago/accommodation-name";
 import { accommodationPath } from "@/lib/trivago/gallery-shared";
 import {
   fetchAccommodationHighlights,
@@ -20,6 +21,7 @@ import {
   type Nsid,
 } from "@/lib/trivago/highlights";
 import {
+  emptyAccommodationProfile,
   fetchAccommodationProfile,
   formatScore,
   ratingsCountLabel,
@@ -75,6 +77,28 @@ function Stars({ value }: { value: number }) {
   );
 }
 
+function formattedPrice(profile: AccommodationProfile): string | null {
+  if (profile.price) {
+    try {
+      return new Intl.NumberFormat("en-US", {
+        style: "currency",
+        currency: profile.price.currency,
+        maximumFractionDigits: 0,
+      }).format(profile.price.amount);
+    } catch {
+      return profile.priceText;
+    }
+  }
+  return profile.priceText;
+}
+
+function pricePeriodLabel(profile: AccommodationProfile): string | null {
+  if (!profile.price) {
+    return null;
+  }
+  return profile.price.period === "stay" ? "per stay" : "per night";
+}
+
 function PricePanel({
   profile,
   linked,
@@ -82,20 +106,8 @@ function PricePanel({
   profile: AccommodationProfile;
   linked: boolean;
 }) {
-  const amount =
-    profile.priceAmount === null
-      ? null
-      : new Intl.NumberFormat("en-US", {
-          style: "currency",
-          currency: "USD",
-          maximumFractionDigits: 0,
-        }).format(profile.priceAmount);
-  const period =
-    profile.pricePeriod === "stay"
-      ? "per stay"
-      : profile.pricePeriod === "night"
-        ? "per night"
-        : null;
+  const amount = formattedPrice(profile);
+  const period = pricePeriodLabel(profile);
   const buttonSx = {
     alignSelf: "stretch",
     bgcolor: dealGreen,
@@ -116,19 +128,25 @@ function PricePanel({
       }}
     >
       {amount ? (
-        <>
+        profile.price ? (
+          <>
+            <Typography variant="body2" color="text.secondary">
+              from
+            </Typography>
+            <Typography variant="h4" component="p" sx={{ fontWeight: 800, lineHeight: 1 }}>
+              {amount}
+            </Typography>
+            {period ? (
+              <Typography variant="body2" color="text.secondary">
+                {period}
+              </Typography>
+            ) : null}
+          </>
+        ) : (
           <Typography variant="body2" color="text.secondary">
-            from
-          </Typography>
-          <Typography variant="h4" component="p" sx={{ fontWeight: 800, lineHeight: 1 }}>
             {amount}
           </Typography>
-          {period ? (
-            <Typography variant="body2" color="text.secondary">
-              {period}
-            </Typography>
-          ) : null}
-        </>
+        )
       ) : (
         <Typography variant="body2" color="text.secondary">
           Nightly rate unavailable
@@ -189,14 +207,50 @@ function ListingDetails({ profile }: { profile: AccommodationProfile }) {
   );
 }
 
+function FeatureLine({ text }: { text: string }) {
+  return (
+    <Stack direction="row" spacing={0.75} sx={{ alignItems: "flex-start" }}>
+      <AutoAwesomeOutlinedIcon sx={{ fontSize: 18, mt: 0.15, color: "text.secondary" }} />
+      <Typography variant="body2">{text}</Typography>
+    </Stack>
+  );
+}
+
+async function HighlightFeatures({
+  nsid,
+  amenities,
+}: {
+  nsid: Nsid;
+  amenities: string[];
+}) {
+  const highlights = await fetchAccommodationHighlights(nsid);
+  const text = featureLine(highlights.ok ? highlights.highlights : [], amenities);
+  return text ? <FeatureLine text={text} /> : null;
+}
+
+function FeatureSummary({
+  nsid,
+  amenities,
+}: {
+  nsid: Nsid;
+  amenities: string[];
+}) {
+  const fallback = featureLine([], amenities);
+  return (
+    <Suspense fallback={fallback ? <FeatureLine text={fallback} /> : null}>
+      <HighlightFeatures nsid={nsid} amenities={amenities} />
+    </Suspense>
+  );
+}
+
 function ListingCardBody({
   profile,
-  features,
+  nsid,
   linked,
   titleComponent,
 }: {
   profile: AccommodationProfile;
-  features: string | null;
+  nsid: Nsid;
   linked: boolean;
   titleComponent: "h1" | "h2";
 }) {
@@ -272,12 +326,7 @@ function ListingCardBody({
             </Typography>
           </Stack>
         ) : null}
-        {features ? (
-          <Stack direction="row" spacing={0.75} sx={{ alignItems: "flex-start" }}>
-            <AutoAwesomeOutlinedIcon sx={{ fontSize: 18, mt: 0.15, color: "text.secondary" }} />
-            <Typography variant="body2">{features}</Typography>
-          </Stack>
-        ) : null}
+        <FeatureSummary nsid={nsid} amenities={profile.amenities} />
         {stay ? (
           <Typography variant="caption" color="text.secondary">
             {stay}
@@ -304,28 +353,14 @@ export async function ListingCard({
   expanded?: boolean;
   titleComponent?: "h1" | "h2";
 }) {
-  const [profile, highlights] = await Promise.all([
-    fetchAccommodationProfile(nsid),
-    fetchAccommodationHighlights(nsid),
-  ]);
-
-  const features = featureLine(
-    highlights.ok ? highlights.highlights : [],
-    profile?.amenities ?? [],
-  );
-
-  if (!profile) {
-    return (
-      <Alert severity="info">
-        Live hotel details were not available for this property.
-      </Alert>
-    );
-  }
+  const profile =
+    (await fetchAccommodationProfile(nsid)) ??
+    emptyAccommodationProfile(accommodationFallbackLabel(nsid));
 
   const body = (
     <ListingCardBody
       profile={profile}
-      features={features}
+      nsid={nsid}
       linked={linkToGallery}
       titleComponent={titleComponent}
     />
