@@ -111,4 +111,80 @@ describe("readProfile", () => {
       period: "night",
     });
   });
+
+  it("does not treat a longer search id as a match for a prefix request", () => {
+    const html = page(
+      [
+        hotel("Prefix Stay", {
+          url: "https://www.trivago.com/en-US/oar/prefix-stay?search=100-420",
+        }),
+        hotel("Other Stay", {
+          url: "https://www.trivago.com/en-US/oar/other-stay?search=100-19",
+        }),
+      ],
+      "Requested Stay | trivago",
+    );
+
+    expect(readProfile(html, { ns: 100, id: 42 })).toEqual({
+      name: "Requested Stay",
+      imageSrc: null,
+      streetAddress: null,
+      locality: null,
+      postalCode: null,
+      country: null,
+      stars: null,
+      ratingValue: null,
+      ratingCount: null,
+      ratingLabel: null,
+      price: null,
+      priceText: null,
+      checkIn: null,
+      checkOut: null,
+      summary: null,
+      amenities: [],
+    });
+  });
+
+  it("selects the complete search id when a prefix sibling is also present", () => {
+    const html = page([
+      hotel("Prefix Stay", {
+        url: "https://www.trivago.com/en-US/oar/prefix-stay?search=100-420",
+      }),
+      hotel("Exact Stay", {
+        url: "https://www.trivago.com/en-US/oar/exact-stay?search=100-42",
+      }),
+    ]);
+
+    expect(readProfile(html, { ns: 100, id: 42 })?.name).toBe("Exact Stay");
+  });
+
+  it("rejects a sole hotel whose search id conflicts with the request", () => {
+    const html = page(
+      [
+        hotel("Other Stay", {
+          url: "https://www.trivago.com/en-US/oar/other-stay?search=100-19",
+        }),
+      ],
+      "Requested Stay | trivago",
+    );
+
+    expect(readProfile(html, { ns: 100, id: 42 })).toEqual({
+      name: "Requested Stay",
+      imageSrc: null,
+      streetAddress: null,
+      locality: null,
+      postalCode: null,
+      country: null,
+      stars: null,
+      ratingValue: null,
+      ratingCount: null,
+      ratingLabel: null,
+      price: null,
+      priceText: null,
+      checkIn: null,
+      checkOut: null,
+      summary: null,
+      amenities: [],
+    });
+  });
 });

@@ -171,18 +171,41 @@ function nsidToken(nsid: Nsid): string {
   return `${nsid.ns}-${nsid.id}`;
 }
 
-function hotelMatchesNsid(hotel: Record<string, unknown>, nsid: Nsid): boolean {
-  const token = nsidToken(nsid);
+function searchParamValue(text: string): string | null {
+  try {
+    return new URL(text, "https://www.trivago.com").searchParams.get("search");
+  } catch {
+    return null;
+  }
+}
+
+function identifiersFromHotel(hotel: Record<string, unknown>): string[] {
   const texts: string[] = [];
   collectIdentifierTexts(hotel["@id"], texts);
   collectIdentifierTexts(hotel.url, texts);
   collectIdentifierTexts(hotel.identifier, texts);
   collectIdentifierTexts(hotel.sameAs, texts);
-  return texts.some(
-    (text) =>
-      text.includes(`search=${token}`) ||
-      new RegExp(`(?:^|[^0-9])${token}(?:[^0-9]|$)`).test(text),
-  );
+
+  const identifiers: string[] = [];
+  for (const text of texts) {
+    const fromQuery = searchParamValue(text);
+    const identifier = fromQuery ?? (/^\d+-\d+$/.test(text) ? text : null);
+    if (identifier && !identifiers.includes(identifier)) {
+      identifiers.push(identifier);
+    }
+  }
+  return identifiers;
+}
+
+function hotelIdentifierKind(
+  hotel: Record<string, unknown>,
+  nsid: Nsid,
+): "match" | "conflict" | "missing" {
+  const identifiers = identifiersFromHotel(hotel);
+  if (identifiers.length === 0) {
+    return "missing";
+  }
+  return identifiers.includes(nsidToken(nsid)) ? "match" : "conflict";
 }
 
 function sameHotel(
@@ -243,8 +266,13 @@ function selectHotel(
     collectHotels(document, hotels);
   }
   const distinct = uniqueHotels(hotels);
-
-  const matched = distinct.filter((hotel) => hotelMatchesNsid(hotel, nsid));
+  const kinds = distinct.map((hotel) => ({
+    hotel,
+    kind: hotelIdentifierKind(hotel, nsid),
+  }));
+  const matched = kinds.filter((item) => item.kind === "match").map((item) => item.hotel);
+  const conflicts = kinds.filter((item) => item.kind === "conflict");
+  const unlabeled = kinds.filter((item) => item.kind === "missing");
   const primary = documents
     .map((document) => readPrimaryHotel(document))
     .find((hotel): hotel is Record<string, unknown> => hotel !== null);
@@ -261,11 +289,14 @@ function selectHotel(
     }
     return null;
   }
-  if (distinct.length === 1) {
-    return distinct[0];
+  if (conflicts.length > 0) {
+    return null;
   }
-  if (primary && distinct.some((hotel) => sameHotel(hotel, primary))) {
-    return hotelMatchesNsid(primary, nsid) ? primary : null;
+  if (unlabeled.length === 1 && distinct.length === 1) {
+    return unlabeled[0].hotel;
+  }
+  if (primary && unlabeled.some((item) => sameHotel(item.hotel, primary))) {
+    return primary;
   }
   return null;
 }
@@ -412,6 +443,7 @@ async function loadAccommodationProfile(
     `https://www.trivago.com/en-US/odr/?search=${ns}-${id}`,
     {
       headers: { "accept-language": "en-US,en;q=0.9" },
+      signal: AbortSignal.timeout(12_000),
     },
   );
 
