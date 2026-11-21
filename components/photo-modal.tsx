@@ -13,7 +13,8 @@ import Divider from "@mui/material/Divider";
 import IconButton from "@mui/material/IconButton";
 import Stack from "@mui/material/Stack";
 import Tooltip from "@mui/material/Tooltip";
-import type { SxProps, Theme } from "@mui/material/styles";
+import type { Theme } from "@mui/material/styles";
+import type { SystemStyleObject } from "@mui/system";
 import { visuallyHidden } from "@mui/utils";
 import { useParams, useRouter } from "next/navigation";
 import { Suspense, useEffect, useRef, useState, type ReactNode } from "react";
@@ -104,7 +105,7 @@ function ToolbarIconButton({
   disabled?: boolean;
   href?: string;
   highlight?: boolean;
-  wrapperSx?: SxProps<Theme>;
+  wrapperSx?: SystemStyleObject<Theme>;
   children: ReactNode;
 }) {
   const buttonSx = {
@@ -131,7 +132,7 @@ function ToolbarIconButton({
 
   return (
     <Tooltip title={label} enterDelay={500} disableTouchListener>
-      <Box component="span" sx={[{ display: "inline-flex" }, wrapperSx ?? {}]}>
+      <Box component="span" sx={{ display: "inline-flex", ...wrapperSx }}>
         {button}
       </Box>
     </Tooltip>
