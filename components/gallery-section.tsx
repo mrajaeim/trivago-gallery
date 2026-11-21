@@ -41,7 +41,7 @@ function GalleryAlert({ failure }: { failure: GalleryFailure }) {
 
 export function GallerySkeleton() {
   return (
-    <Stack spacing={3}>
+    <Stack spacing={3} id="photos">
       <Stack spacing={1}>
         <Typography id="photos-heading" variant="h5" component="h2">
           Photos
