@@ -1,5 +1,7 @@
 import { cacheLife, cacheTag } from "next/cache";
 import { connection } from "next/server";
+import { GRAPHQL_ENDPOINT, GRAPHQL_HEADERS } from "@/lib/trivago/contract";
+import { galleryImageUrl } from "@/lib/trivago/gallery-shared";
 import type { Nsid } from "@/lib/trivago/highlights";
 
 export type StayPeriod = "night" | "stay";
@@ -489,6 +491,126 @@ export function readProfile(html: string, nsid: Nsid): AccommodationProfile | nu
   return profileFromHotel(hotel, name);
 }
 
+const COVER_IMAGE_WIDTH = 960;
+
+const ACCOMMODATION_PROFILE_QUERY = `query accommodationProfile($input: AccommodationDetailsInput!) {
+  getAccommodationDetails(input: $input) {
+    accommodationDetails {
+      nsid { ns id }
+      translatedName { value }
+      translatedDescription { value }
+      mainImageObject { path }
+      hotelClassification { rating }
+      reviewRating { trivagoRating reviewsCount }
+      checkInCheckOutHours { checkInHour checkOutHour }
+      contactDetails { streetAddress postalCode }
+      locality { translatedName { value } }
+      country { translatedName { value } }
+      topAmenities { translatedName { value } }
+    }
+  }
+}`;
+
+function translatedValue(value: unknown): string | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+  return readString(value.value);
+}
+
+function clockFromHour(value: unknown): string | null {
+  if (typeof value !== "number" || !Number.isInteger(value) || value < 0 || value > 23) {
+    return null;
+  }
+  return `${String(value).padStart(2, "0")}:00`;
+}
+
+function ratingFromThousandths(value: unknown): number | null {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return null;
+  }
+  const rating = Math.round(value / 100) / 10;
+  return rating >= 0 && rating <= 10 ? rating : null;
+}
+
+function readGraphqlAmenities(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  const names = value.flatMap((item) => {
+    if (!isRecord(item)) {
+      return [];
+    }
+    const name = translatedValue(item.translatedName);
+    return name ? [name] : [];
+  });
+  return [...new Set(names)].slice(0, 12);
+}
+
+function sameNsid(value: unknown, nsid: Nsid): boolean {
+  return isRecord(value) && value.ns === nsid.ns && value.id === nsid.id;
+}
+
+export function readGraphqlProfile(
+  payload: unknown,
+  nsid: Nsid,
+): AccommodationProfile | null {
+  if (
+    !isRecord(payload) ||
+    !isRecord(payload.data) ||
+    !isRecord(payload.data.getAccommodationDetails) ||
+    !Array.isArray(payload.data.getAccommodationDetails.accommodationDetails)
+  ) {
+    return null;
+  }
+
+  const record = payload.data.getAccommodationDetails.accommodationDetails.find(
+    (item) => isRecord(item) && sameNsid(item.nsid, nsid),
+  );
+  if (!isRecord(record)) {
+    return null;
+  }
+
+  const name = translatedValue(record.translatedName);
+  if (!name) {
+    return null;
+  }
+
+  const contact = isRecord(record.contactDetails) ? record.contactDetails : null;
+  const hours = isRecord(record.checkInCheckOutHours) ? record.checkInCheckOutHours : null;
+  const classification = isRecord(record.hotelClassification) ? record.hotelClassification : null;
+  const reviews = isRecord(record.reviewRating) ? record.reviewRating : null;
+  const image = isRecord(record.mainImageObject) ? record.mainImageObject : null;
+  const locality = isRecord(record.locality) ? record.locality : null;
+  const country = isRecord(record.country) ? record.country : null;
+  const stars = readNumber(classification?.rating);
+  const ratingValue = ratingFromThousandths(reviews?.trivagoRating);
+  const imagePath = readString(image?.path);
+
+  return {
+    name,
+    imageSrc: imagePath ? galleryImageUrl(imagePath, COVER_IMAGE_WIDTH) : null,
+    streetAddress: readString(contact?.streetAddress),
+    locality: translatedValue(locality?.translatedName),
+    postalCode: readString(contact?.postalCode),
+    country: translatedValue(country?.translatedName),
+    stars: stars !== null && stars >= 1 && stars <= 5 ? stars : null,
+    ratingValue,
+    ratingCount: readNumber(reviews?.reviewsCount),
+    ratingLabel: ratingValue === null ? null : ratingLabelFor(ratingValue),
+    price: null,
+    priceText: null,
+    checkIn: clockFromHour(hours?.checkInHour),
+    checkOut: clockFromHour(hours?.checkOutHour),
+    summary: translatedValue(record.translatedDescription),
+    amenities: readGraphqlAmenities(record.topAmenities),
+  };
+}
+
+function graphqlHasErrors(payload: unknown): boolean {
+  return isRecord(payload) && Array.isArray(payload.errors) && payload.errors.length > 0;
+}
+
 async function loadAccommodationProfile(
   ns: number,
   id: number,
@@ -499,9 +621,15 @@ async function loadAccommodationProfile(
 
   let response: Response;
   try {
-    response = await fetch(`https://www.trivago.com/en-US/odr/?search=${ns}-${id}`, {
+    response = await fetch(`${GRAPHQL_ENDPOINT}?accommodationProfile`, {
+      method: "POST",
       cache: "no-store",
-      headers: { "accept-language": "en-US,en;q=0.9" },
+      headers: GRAPHQL_HEADERS,
+      body: JSON.stringify({
+        operationName: "accommodationProfile",
+        query: ACCOMMODATION_PROFILE_QUERY,
+        variables: { input: { nsids: [{ ns, id }] } },
+      }),
       signal: AbortSignal.timeout(12_000),
     });
   } catch (error) {
@@ -512,9 +640,16 @@ async function loadAccommodationProfile(
     unavailable(classifyProfileHttpStatus(response.status).reason);
   }
 
-  const profile = readProfile(await response.text(), { ns, id });
-  if (!profile) {
+  let payload: unknown;
+  try {
+    payload = await response.json();
+  } catch {
     unavailable("invalid-response");
+  }
+
+  const profile = readGraphqlProfile(payload, { ns, id });
+  if (!profile) {
+    unavailable(graphqlHasErrors(payload) ? "upstream-error" : "invalid-response");
   }
   return profile;
 }

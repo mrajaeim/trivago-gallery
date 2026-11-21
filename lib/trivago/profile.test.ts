@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   classifyProfileFailure,
   classifyProfileHttpStatus,
+  readGraphqlProfile,
   readProfile,
 } from "@/lib/trivago/profile";
 
@@ -239,5 +240,81 @@ describe("classifyProfileFailure", () => {
       reason: "upstream-error",
       retryable: true,
     });
+  });
+});
+
+describe("readGraphqlProfile", () => {
+  it("maps the accommodation details record for the requested stay", () => {
+    const profile = readGraphqlProfile(
+      {
+        data: {
+          getAccommodationDetails: {
+            accommodationDetails: [
+              {
+                nsid: { ns: 100, id: 1 },
+                translatedName: { value: "Other Stay" },
+              },
+              {
+                nsid: nsid,
+                translatedName: { value: "Wyndham Lake Buena Vista" },
+                translatedDescription: { value: "A resort near Disney Springs." },
+                mainImageObject: { path: "/partner-images/cover.jpeg" },
+                hotelClassification: { rating: 4 },
+                reviewRating: { trivagoRating: 8100, reviewsCount: 18371 },
+                checkInCheckOutHours: { checkInHour: 16, checkOutHour: 11 },
+                contactDetails: {
+                  streetAddress: "1850 Hotel Plaza Blvd",
+                  postalCode: "32830",
+                },
+                locality: { translatedName: { value: "Lake Buena Vista" } },
+                country: { translatedName: { value: "USA" } },
+                topAmenities: [
+                  { translatedName: { value: "WiFi" } },
+                  { translatedName: { value: "Pool" } },
+                  { translatedName: { value: "WiFi" } },
+                ],
+              },
+            ],
+          },
+        },
+      },
+      nsid,
+    );
+
+    expect(profile).toEqual({
+      name: "Wyndham Lake Buena Vista",
+      imageSrc:
+        "https://imgcy.trivago.com/c_limit,d_dummy.jpeg,f_auto,q_auto,w_960/partner-images/cover.jpeg",
+      streetAddress: "1850 Hotel Plaza Blvd",
+      locality: "Lake Buena Vista",
+      postalCode: "32830",
+      country: "USA",
+      stars: 4,
+      ratingValue: 8.1,
+      ratingCount: 18371,
+      ratingLabel: "Very good",
+      price: null,
+      priceText: null,
+      checkIn: "16:00",
+      checkOut: "11:00",
+      summary: "A resort near Disney Springs.",
+      amenities: ["WiFi", "Pool"],
+    });
+  });
+
+  it("rejects a payload that does not name the requested stay", () => {
+    expect(readGraphqlProfile({ data: {} }, nsid)).toBeNull();
+    expect(
+      readGraphqlProfile(
+        {
+          data: {
+            getAccommodationDetails: {
+              accommodationDetails: [{ nsid: { ns: 100, id: 1 }, translatedName: { value: "Other" } }],
+            },
+          },
+        },
+        nsid,
+      ),
+    ).toBeNull();
   });
 });
