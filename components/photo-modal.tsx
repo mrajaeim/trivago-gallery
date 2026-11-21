@@ -63,7 +63,7 @@ export function PhotoModal({ children }: { children: ReactNode }) {
         fullWidth
         maxWidth={false}
         scroll="paper"
-        aria-labelledby="gallery-dialog-title"
+        aria-labelledby="accommodation-dialog-title"
         onClose={close}
         slotProps={{
           paper: {
@@ -89,10 +89,10 @@ export function PhotoModal({ children }: { children: ReactNode }) {
             px: 2,
           }}
         >
-          <Typography variant="body2" color="text.secondary">
-            Close gallery
+          <Typography id="accommodation-dialog-title" variant="subtitle1" component="p">
+            Accommodation
           </Typography>
-          <IconButton aria-label="Close gallery" onClick={close} edge="end">
+          <IconButton aria-label="Close" onClick={close} edge="end">
             <CloseIcon />
           </IconButton>
         </DialogTitle>
