@@ -143,12 +143,32 @@ export async function GallerySection({
           </Stack>
         ) : null}
       </Stack>
-      {!imagesResult.ok && imagesResult.reason === "missing" ? (
+      {!imagesResult.ok && imagesResult.reason === "not-found" ? (
         <Alert severity="info">
           No gallery was returned for this accommodation.
         </Alert>
       ) : null}
-      {!imagesResult.ok && imagesResult.reason === "error" ? (
+      {!imagesResult.ok && imagesResult.reason === "invalid-response" ? (
+        <Alert severity="error">
+          <Typography component="h2" variant="h6">
+            Gallery response was incomplete
+          </Typography>
+          <Typography>
+            The accommodation was found, but its photo fields were not usable.
+          </Typography>
+          <List dense disablePadding sx={{ my: 1, listStyleType: "disc", pl: 2.5 }}>
+            {imagesResult.messages.map((message) => (
+              <ListItem key={message} disableGutters sx={{ display: "list-item", py: 0 }}>
+                <ListItemText
+                  primary={message}
+                  slotProps={{ primary: { variant: "body2" } }}
+                />
+              </ListItem>
+            ))}
+          </List>
+        </Alert>
+      ) : null}
+      {!imagesResult.ok && imagesResult.reason === "upstream-error" ? (
         <GalleryAlert failure={imagesResult} />
       ) : null}
       {imagesResult.ok && imagesResult.images.length === 0 ? (

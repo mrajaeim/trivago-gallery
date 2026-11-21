@@ -17,15 +17,25 @@ import {
   galleryImageUrl,
   groupTitles,
   photoPath as photoPathFor,
-  type ImageSize,
 } from "@/lib/trivago/gallery-shared";
-
-export { decodeImageId };
-
-export { galleryImageUrl };
+import {
+  interpretAccommodationImageCount,
+  interpretAccommodationImages,
+  type GalleryCountResult,
+  type GalleryFailure,
+  type GalleryImagesResult,
+} from "@/lib/trivago/gallery-read";
 import type { Nsid } from "@/lib/trivago/highlights";
 
+export { decodeImageId, galleryImageUrl };
 export type { Nsid };
+export type { GalleryGroupCount } from "@/lib/trivago/gallery-shared";
+export type {
+  GalleryCountResult,
+  GalleryFailure,
+  GalleryImage,
+  GalleryImagesResult,
+} from "@/lib/trivago/gallery-read";
 
 const IMAGE_COUNT_HASH =
   "536f8958d182a7c687e71559bbb6cae355055eecc2ea674462ef3ab6153d7e5d";
@@ -60,36 +70,6 @@ const CONTEXT_AWARE_CONTENT = {
     { nsid: { ns: 200, id: 42362 } },
   ],
 };
-
-export type GalleryGroupCount = {
-  ns: number;
-  id: number;
-  imageCount: number;
-};
-
-export type GalleryImage = {
-  imageId: string;
-  size: ImageSize | null;
-  advertisers: string[];
-  groups: Nsid[];
-  srcTile: string | null;
-  srcPhoto: string | null;
-};
-
-export type GalleryFailure = {
-  ok: false;
-  status: number | null;
-  messages: string[];
-  reason: "missing" | "error";
-};
-
-export type GalleryImagesResult =
-  | { ok: true; images: GalleryImage[] }
-  | GalleryFailure;
-
-export type GalleryCountResult =
-  | { ok: true; totalImageCount: number; groups: GalleryGroupCount[] }
-  | GalleryFailure;
 
 type ImagesVariables = {
   getAccommodationDetailsInput: { nsids: Nsid[] };
@@ -165,176 +145,6 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
 
-function readString(value: unknown): string | null {
-  return typeof value === "string" && value.length > 0 ? value : null;
-}
-
-function readNsidValue(value: unknown): Nsid | null {
-  if (
-    !isRecord(value) ||
-    typeof value.ns !== "number" ||
-    typeof value.id !== "number" ||
-    !Number.isSafeInteger(value.ns) ||
-    !Number.isSafeInteger(value.id)
-  ) {
-    return null;
-  }
-
-  return { ns: value.ns, id: value.id };
-}
-
-function readPositiveNumber(value: unknown): number | null {
-  return typeof value === "number" && Number.isFinite(value) && value > 0
-    ? value
-    : null;
-}
-
-function sameNsid(left: Nsid, right: Nsid): boolean {
-  return left.ns === right.ns && left.id === right.id;
-}
-
-function readAdvertisers(source: unknown): string[] {
-  if (!isRecord(source) || !Array.isArray(source.advertisers)) {
-    return [];
-  }
-
-  return source.advertisers.flatMap((advertiser) => {
-    if (!isRecord(advertiser) || !isRecord(advertiser.translatedName)) {
-      return [];
-    }
-    const name = readString(advertiser.translatedName.value);
-    return name ? [name] : [];
-  });
-}
-
-function readGroups(value: unknown): Nsid[] {
-  if (!Array.isArray(value)) {
-    return [];
-  }
-
-  return value.flatMap((grouping) => {
-    if (!isRecord(grouping)) {
-      return [];
-    }
-    const groupTag = isRecord(grouping.groupTag) ? grouping.groupTag : null;
-    const nsid = groupTag ? readNsidValue(groupTag.nsid) : null;
-    return nsid ? [nsid] : [];
-  });
-}
-
-function readImageSize(value: Record<string, unknown>): ImageSize | null {
-  const width = readPositiveNumber(value.width);
-  const height = readPositiveNumber(value.height);
-  if (width === null || height === null) {
-    return null;
-  }
-
-  return { width, height };
-}
-
-function readImage(value: unknown): {
-  imageId: string;
-  urlTail: string;
-  size: ImageSize | null;
-  advertisers: string[];
-  groups: Nsid[];
-} | null {
-  if (!isRecord(value)) {
-    return null;
-  }
-
-  const imageId = readString(value.imageId);
-  const urlTail = readString(value.urlTail);
-  if (!imageId || !urlTail) {
-    return null;
-  }
-
-  return {
-    imageId,
-    urlTail,
-    size: readImageSize(value),
-    advertisers: readAdvertisers(value.source),
-    groups: readGroups(value.tagGroupings),
-  };
-}
-
-function findDetails(
-  payload: unknown,
-  nsid: Nsid,
-): Record<string, unknown> | null {
-  if (
-    !isRecord(payload) ||
-    !isRecord(payload.getAccommodationDetails) ||
-    !Array.isArray(payload.getAccommodationDetails.accommodationDetails)
-  ) {
-    return null;
-  }
-
-  const record = payload.getAccommodationDetails.accommodationDetails.find(
-    (item) => {
-      if (!isRecord(item)) {
-        return false;
-      }
-      const itemNsid = readNsidValue(item.nsid);
-      return itemNsid !== null && sameNsid(itemNsid, nsid);
-    },
-  );
-
-  return isRecord(record) ? record : null;
-}
-
-function readImages(payload: unknown, nsid: Nsid): {
-  matched: boolean;
-  images: ReturnType<typeof readImage>[];
-} {
-  const record = findDetails(payload, nsid);
-  if (!isRecord(record)) {
-    return { matched: false, images: [] };
-  }
-
-  const gallery = isRecord(record.imageGallery) ? record.imageGallery : null;
-  const images = gallery && Array.isArray(gallery.images) ? gallery.images : null;
-  if (!images) {
-    return { matched: true, images: [] };
-  }
-
-  return {
-    matched: true,
-    images: images.map((item) => readImage(item)),
-  };
-}
-
-function readCount(payload: unknown, nsid: Nsid): {
-  matched: boolean;
-  totalImageCount: number | null;
-  groups: GalleryGroupCount[];
-} {
-  const record = findDetails(payload, nsid);
-  if (!isRecord(record)) {
-    return { matched: false, totalImageCount: null, groups: [] };
-  }
-
-  const gallery = isRecord(record.imageGallery) ? record.imageGallery : null;
-  if (!gallery || typeof gallery.totalImageCount !== "number") {
-    return { matched: true, totalImageCount: null, groups: [] };
-  }
-
-  const groups = Array.isArray(gallery.imageCountsByGroupTag)
-    ? gallery.imageCountsByGroupTag.flatMap((item) => {
-        if (!isRecord(item) || typeof item.imageCount !== "number" || !isRecord(item.tag)) {
-          return [];
-        }
-        const tag = readNsidValue(item.tag.nsid);
-        if (!tag) {
-          return [];
-        }
-        return [{ ns: tag.ns, id: tag.id, imageCount: item.imageCount }];
-      })
-    : [];
-
-  return { matched: true, totalImageCount: gallery.totalImageCount, groups };
-}
-
 function graphqlMessages(payload: unknown): string[] {
   if (!isRecord(payload) || !Array.isArray(payload.errors)) {
     return [];
@@ -365,7 +175,7 @@ function failure(error: unknown): GalleryFailure {
       ok: false,
       status: persistedQueryStatus(error.errors),
       messages: messages.length > 0 ? messages : [error.message],
-      reason: "error",
+      reason: "upstream-error",
     };
   }
 
@@ -374,7 +184,7 @@ function failure(error: unknown): GalleryFailure {
       ok: false,
       status: error.statusCode,
       messages: ["The GraphQL response was not JSON."],
-      reason: "error",
+      reason: "upstream-error",
     };
   }
 
@@ -387,54 +197,17 @@ function failure(error: unknown): GalleryFailure {
         messages.length > 0
           ? messages
           : [`GraphQL HTTP error: ${error.statusCode}`],
-      reason: "error",
+      reason: "upstream-error",
     };
   }
 
   const message =
     error instanceof Error ? error.message : "The GraphQL request failed.";
-  return { ok: false, status: null, messages: [message], reason: "error" };
+  return { ok: false, status: null, messages: [message], reason: "upstream-error" };
 }
 
-function missing(nsid: Nsid, status: number | null): GalleryFailure {
-  return {
-    ok: false,
-    status,
-    messages: [`No accommodation record matched ns ${nsid.ns} id ${nsid.id}.`],
-    reason: "missing",
-  };
-}
-
-const probeImageUrl = cache(async (url: string): Promise<boolean> => {
-  try {
-    const response = await fetch(url, {
-      method: "HEAD",
-      cache: "no-store",
-      signal: AbortSignal.timeout(8000),
-    });
-    const type = response.headers.get("content-type") ?? "";
-    return response.ok && type.startsWith("image/");
-  } catch {
-    return false;
-  }
-});
-
-async function withSources(
-  images: Array<NonNullable<ReturnType<typeof readImage>>>,
-): Promise<GalleryImage[]> {
-  const candidate = images
-    .map((image) => galleryImageUrl(image.urlTail, 480))
-    .find((url): url is string => url !== null);
-  const usable = candidate ? await probeImageUrl(candidate) : false;
-
-  return images.map((image) => ({
-    imageId: image.imageId,
-    size: image.size,
-    advertisers: image.advertisers,
-    groups: image.groups,
-    srcTile: usable ? galleryImageUrl(image.urlTail, 480) : null,
-    srcPhoto: usable ? galleryImageUrl(image.urlTail, 1600) : null,
-  }));
+function responseStatus(data: unknown): number | null {
+  return data && typeof data === "object" ? persistedDataStatus(data) : null;
 }
 
 const loadAccommodationImages = cache(
@@ -456,20 +229,7 @@ const loadAccommodationImages = cache(
         errorPolicy: "none",
       });
 
-      const { matched, images } = readImages(result.data, nsid);
-      if (!matched) {
-        return missing(
-          nsid,
-          result.data ? persistedDataStatus(result.data) : null,
-        );
-      }
-
-      return {
-        ok: true,
-        images: await withSources(
-          images.flatMap((image) => (image ? [image] : [])),
-        ),
-      };
+      return interpretAccommodationImages(result.data, nsid, responseStatus(result.data));
     } catch (error) {
       return failure(error);
     }
@@ -492,15 +252,11 @@ const loadAccommodationImageCount = cache(
         errorPolicy: "none",
       });
 
-      const { matched, totalImageCount, groups } = readCount(result.data, nsid);
-      if (!matched || totalImageCount === null) {
-        return missing(
-          nsid,
-          result.data ? persistedDataStatus(result.data) : null,
-        );
-      }
-
-      return { ok: true, totalImageCount, groups };
+      return interpretAccommodationImageCount(
+        result.data,
+        nsid,
+        responseStatus(result.data),
+      );
     } catch (error) {
       return failure(error);
     }
