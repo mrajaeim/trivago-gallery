@@ -384,7 +384,7 @@ export function PhotoModal({
         <DialogContent
           data-photos-scroller=""
           sx={{
-            pt: 0,
+            pt: { xs: 2, sm: 2.5 },
             px: { xs: 1.25, sm: 3 },
             pb: { xs: 2.5, sm: 3 },
             flex: "1 1 auto",
