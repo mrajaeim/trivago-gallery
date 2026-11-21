@@ -1,64 +1,105 @@
 "use client";
 
-import { useEffect, useRef, type ReactNode } from "react";
+import CloseIcon from "@mui/icons-material/Close";
+import Box from "@mui/material/Box";
+import Dialog from "@mui/material/Dialog";
+import DialogContent from "@mui/material/DialogContent";
+import DialogTitle from "@mui/material/DialogTitle";
+import IconButton from "@mui/material/IconButton";
+import Typography from "@mui/material/Typography";
 import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+
+function slotIsHidden(node: HTMLElement) {
+  let current: HTMLElement | null = node;
+  while (current && current !== document.body) {
+    if (current.style.getPropertyValue("display") === "none") {
+      return true;
+    }
+    current = current.parentElement;
+  }
+  return false;
+}
 
 export function PhotoModal({ children }: { children: ReactNode }) {
-  const dialogRef = useRef<HTMLDialogElement>(null);
   const router = useRouter();
+  const slotRef = useRef<HTMLDivElement>(null);
+  const [open, setOpen] = useState(true);
 
+  // The intercepted slot stays mounted and is hidden with display:none.
+  // The dialog is portaled to document.body, so it follows that visibility.
   useEffect(() => {
-    const dialog = dialogRef.current;
-    if (!dialog || dialog.open) {
+    const node = slotRef.current;
+    if (!node) {
       return;
     }
 
-    dialog.showModal();
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-
-    return () => {
-      document.body.style.overflow = previousOverflow;
-      if (dialog.open) {
-        dialog.close();
-      }
+    const sync = () => {
+      setOpen(!slotIsHidden(node));
     };
+
+    sync();
+    const observer = new MutationObserver(sync);
+    let current: HTMLElement | null = node;
+    while (current && current !== document.body) {
+      observer.observe(current, {
+        attributes: true,
+        attributeFilter: ["style"],
+      });
+      current = current.parentElement;
+    }
+
+    return () => observer.disconnect();
   }, []);
 
-  function close() {
+  const close = () => {
     router.back();
-  }
+  };
 
   return (
-    <dialog
-      ref={dialogRef}
-      aria-labelledby="gallery-dialog-title"
-      aria-modal="true"
-      className="m-auto w-[min(100%-1.5rem,56rem)] max-h-[calc(100dvh-1.5rem)] overflow-hidden rounded-2xl border border-black/10 bg-white p-0 text-black shadow-xl backdrop:bg-black/70 dark:border-white/12 dark:bg-zinc-950 dark:text-zinc-50"
-      onCancel={(event) => {
-        event.preventDefault();
-        close();
-      }}
-      onClick={(event) => {
-        if (event.target === event.currentTarget) {
-          close();
-        }
-      }}
-    >
-      <div className="flex max-h-[calc(100dvh-1.5rem)] flex-col">
-        <div className="flex justify-end px-4 pt-4">
-          <button
-            type="button"
-            className="rounded-full px-3 py-1.5 text-sm font-medium text-zinc-700 ring-1 ring-black/10 hover:bg-zinc-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black dark:text-zinc-200 dark:ring-white/15 dark:hover:bg-zinc-900 dark:focus-visible:outline-white"
-            onClick={close}
-          >
-            Close
-          </button>
-        </div>
-        <div className="overflow-y-auto overscroll-contain px-4 pb-4">
+    <Box ref={slotRef}>
+      <Dialog
+        open={open}
+        fullWidth
+        maxWidth={false}
+        scroll="paper"
+        aria-labelledby="gallery-dialog-title"
+        onClose={close}
+        slotProps={{
+          paper: {
+            sx: {
+              width: "min(100% - 1.5rem, 56rem)",
+              maxWidth: "56rem",
+              height: "calc(100dvh - 1.5rem)",
+              maxHeight: "calc(100dvh - 1.5rem)",
+              display: "flex",
+              flexDirection: "column",
+              overflow: "hidden",
+            },
+          },
+        }}
+      >
+        <DialogTitle
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 1,
+            py: 1,
+            px: 2,
+          }}
+        >
+          <Typography variant="body2" color="text.secondary">
+            Close gallery
+          </Typography>
+          <IconButton aria-label="Close gallery" onClick={close} edge="end">
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent sx={{ pt: 0, flex: "1 1 auto", overflowY: "auto" }}>
           {children}
-        </div>
-      </div>
-    </dialog>
+        </DialogContent>
+      </Dialog>
+    </Box>
   );
 }
