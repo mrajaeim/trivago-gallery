@@ -49,6 +49,7 @@ async function PhotoGallery({
     size: image.size,
     advertisers: image.advertisers,
     groups: image.groups,
+    urlTail: image.urlTail,
     srcPhoto: image.srcPhoto,
   }));
 

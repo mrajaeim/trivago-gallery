@@ -20,7 +20,9 @@ vi.mock("next/link", () => ({
 vi.mock("next/navigation", () => ({
   useRouter: () => ({
     push: vi.fn(),
+    replace: vi.fn(),
   }),
+  usePathname: () => "",
 }));
 
 const images: BrowserPhoto[] = [
@@ -102,5 +104,55 @@ describe("PhotoCursor", () => {
     expect(html).toContain("This photo");
     expect(html).toContain("All (2)");
     expect(html).toContain(">Show<");
+  });
+
+  it("mounts the selected photo and its neighbors only", () => {
+    const many: BrowserPhoto[] = Array.from({ length: 7 }, (_, index) => ({
+      imageId: `photo-${index}`,
+      size: { width: 800, height: 600 },
+      advertisers: [],
+      groups: [],
+      srcPhoto: `https://img.example/photo-${index}`,
+    }));
+    const html = renderToStaticMarkup(
+      <PhotoGalleryProvider images={many} ns={100} id={102762}>
+        <PhotoCursor imageId="photo-3" />
+      </PhotoGalleryProvider>,
+    );
+
+    expect(html).toContain("https://img.example/photo-1");
+    expect(html).toContain("https://img.example/photo-3");
+    expect(html).toContain("https://img.example/photo-5");
+    expect(html).not.toContain("https://img.example/photo-0");
+    expect(html).not.toContain("https://img.example/photo-6");
+    expect(html).toContain('fetchPriority="high"');
+    expect(html.match(/<img /g)).toHaveLength(5);
+    expect(html).toContain("Photo 4 of 7");
+  });
+
+  it("renders a responsive cdn set for the open photo", () => {
+    const html = renderToStaticMarkup(
+      <PhotoGalleryProvider
+        images={[
+          {
+            imageId: "room",
+            size: { width: 800, height: 600 },
+            advertisers: [],
+            groups: [],
+            srcPhoto: "https://img.example/fallback",
+            urlTail: "/partner-images/room.jpeg",
+          },
+        ]}
+        ns={100}
+        id={102762}
+      >
+        <PhotoCursor imageId="room" />
+      </PhotoGalleryProvider>,
+    );
+
+    expect(html).toContain("640w");
+    expect(html).toContain("1600w");
+    expect(html).toContain("(max-width: 600px) 100vw, 56rem");
+    expect(html).not.toContain("https://img.example/fallback");
   });
 });

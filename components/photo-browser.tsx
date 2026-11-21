@@ -17,14 +17,27 @@ import Skeleton from "@mui/material/Skeleton";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-import { CdnImage } from "@/components/cdn-image";
+import { usePathname } from "next/navigation";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  type MouseEvent,
+  type ReactNode,
+} from "react";
+import {
+  PhotoSlider,
+  photoStageHeight,
+  type PhotoSliderControls,
+} from "@/components/photo-slider";
 import {
   accommodationPath,
-  fallbackImageSize,
   groupLabel,
+  imageIdFromPathname,
   photoPath,
+  photoViewerTitle,
   type ImageSize,
 } from "@/lib/trivago/gallery-shared";
 
@@ -34,6 +47,7 @@ export type BrowserPhoto = {
   advertisers: string[];
   groups: Array<{ ns: number; id: number }>;
   srcPhoto: string | null;
+  urlTail?: string | null;
 };
 
 type GalleryContextValue = {
@@ -99,11 +113,6 @@ const GalleryContext = createContext<GalleryContextValue | null>(null);
 
 const dealGreen = "#008a05";
 
-const photoStageHeight = {
-  xs: "min(46dvh, 17.5rem)",
-  sm: "min(62dvh, 28rem)",
-} as const;
-
 const photoStageSx = {
   display: "flex",
   justifyContent: "center",
@@ -116,16 +125,6 @@ const photoStageSx = {
   borderBottom: "1px solid",
   borderColor: "divider",
   overflow: "hidden",
-} as const;
-
-const photoFrameSx = {
-  display: "block",
-  width: "auto",
-  height: "auto",
-  maxWidth: "100%",
-  maxHeight: "100%",
-  objectFit: "contain",
-  mx: "auto",
 } as const;
 
 const photoNavGroupSx = {
@@ -203,16 +202,22 @@ export function PhotoGalleryProvider({
   );
 }
 
+function unmodifiedClick(event: MouseEvent<HTMLAnchorElement>) {
+  return event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey;
+}
+
 function PhotoStep({
   href,
   direction,
   label,
   shortLabel,
+  onStep,
 }: {
   href: string | null;
   direction: "previous" | "next";
   label: string;
   shortLabel?: string;
+  onStep: (() => boolean) | null;
 }) {
   const previous = direction === "previous";
   const icon = previous ? (
@@ -250,7 +255,23 @@ function PhotoStep({
   }
 
   return (
-    <Button component={Link} href={href} scroll={false} {...shared}>
+    <Button
+      component={Link}
+      href={href}
+      scroll={false}
+      prefetch={false}
+      onClick={
+        onStep
+          ? (event) => {
+              if (!unmodifiedClick(event) || !onStep()) {
+                return;
+              }
+              event.preventDefault();
+            }
+          : undefined
+      }
+      {...shared}
+    >
       {text}
     </Button>
   );
@@ -259,14 +280,24 @@ function PhotoStep({
 function PhotoNav({
   previousHref,
   nextHref,
+  onPrevious,
+  onNext,
 }: {
   previousHref: string | null;
   nextHref: string | null;
+  onPrevious: (() => boolean) | null;
+  onNext: (() => boolean) | null;
 }) {
   return (
     <Box component="nav" aria-label="More photos" sx={photoNavGroupSx}>
-      <PhotoStep href={previousHref} direction="previous" label="Previous" shortLabel="Prev" />
-      <PhotoStep href={nextHref} direction="next" label="Next" />
+      <PhotoStep
+        href={previousHref}
+        direction="previous"
+        label="Previous"
+        shortLabel="Prev"
+        onStep={onPrevious}
+      />
+      <PhotoStep href={nextHref} direction="next" label="Next" onStep={onNext} />
     </Box>
   );
 }
@@ -371,9 +402,34 @@ export function PhotoPageActions({ ns, id }: { ns: number; id: number }) {
 }
 
 export function PhotoCursor({ imageId }: { imageId: string }) {
-  const router = useRouter();
+  const pathname = usePathname();
+  const routeImageId = imageIdFromPathname(pathname, imageId);
   const { images, ns, id, area, setArea } = useGallery();
-  const index = images.findIndex((image) => image.imageId === imageId);
+  const [gestureId, setGestureId] = useState<string | null>(null);
+  const [seenRouteId, setSeenRouteId] = useState(routeImageId);
+  if (seenRouteId !== routeImageId) {
+    setSeenRouteId(routeImageId);
+    setGestureId(null);
+  }
+  const shownId = gestureId ?? routeImageId;
+  const controlsRef = useRef<PhotoSliderControls | null>(null);
+  const scrollPrevious = () => {
+    const controls = controlsRef.current;
+    if (!controls) {
+      return false;
+    }
+    controls.scrollPrev();
+    return true;
+  };
+  const scrollNext = () => {
+    const controls = controlsRef.current;
+    if (!controls) {
+      return false;
+    }
+    controls.scrollNext();
+    return true;
+  };
+  const index = images.findIndex((item) => item.imageId === shownId);
   const image = index >= 0 ? images[index] : null;
   const options = areaOptions(images);
   const visible = images.filter((item) => inArea(item, area));
@@ -393,44 +449,18 @@ export function PhotoCursor({ imageId }: { imageId: string }) {
       return;
     }
     const first = images.find((item) => inArea(item, area));
-    if (!first) {
+    if (!first || first.imageId === image.imageId) {
       return;
     }
-    router.replace(photoPath(ns, id, first.imageId), { scroll: false });
-  }, [area, image, images, ns, id, router]);
+    window.history.replaceState(null, "", photoPath(ns, id, first.imageId));
+  }, [area, image, images, ns, id]);
 
   useEffect(() => {
-    if (!previousHref && !nextHref) {
+    if (!image) {
       return;
     }
-
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) {
-        return;
-      }
-      const target = event.target;
-      if (
-        target instanceof HTMLElement &&
-        (target.tagName === "INPUT" ||
-          target.tagName === "TEXTAREA" ||
-          target.isContentEditable)
-      ) {
-        return;
-      }
-
-      if (event.key === "ArrowLeft" && previousHref) {
-        event.preventDefault();
-        router.push(previousHref, { scroll: false });
-      }
-      if (event.key === "ArrowRight" && nextHref) {
-        event.preventDefault();
-        router.push(nextHref, { scroll: false });
-      }
-    };
-
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [previousHref, nextHref, router]);
+    document.title = photoViewerTitle(ns, id, image);
+  }, [image, ns, id]);
 
   if (!image) {
     return (
@@ -438,12 +468,10 @@ export function PhotoCursor({ imageId }: { imageId: string }) {
         <Typography variant="h5" component="h1">
           Photo unavailable
         </Typography>
-        <PhotoNav previousHref={null} nextHref={null} />
+        <PhotoNav previousHref={null} nextHref={null} onPrevious={null} onNext={null} />
       </Stack>
     );
   }
-
-  const frame = image.size ?? fallbackImageSize;
   const source = image.advertisers.length > 0 ? image.advertisers.join(", ") : null;
   const areas = photoAreas(image);
   const titles = areas.map((item) => item.label);
@@ -546,6 +574,7 @@ export function PhotoCursor({ imageId }: { imageId: string }) {
             variant="caption"
             color="text.secondary"
             component="p"
+            aria-live="polite"
             sx={{
               flexShrink: 0,
               fontWeight: 700,
@@ -587,16 +616,14 @@ export function PhotoCursor({ imageId }: { imageId: string }) {
           bgcolor: "background.paper",
         }}
       >
-        <Box sx={photoStageSx}>
-          <CdnImage
-            src={image.srcPhoto}
-            width={frame.width}
-            height={frame.height}
-            alt={titles.length > 0 ? `${titles.join(", ")} photo` : positionLabel}
-            loading="eager"
-            sx={photoFrameSx}
-          />
-        </Box>
+        <PhotoSlider
+          images={browseImages}
+          imageId={imageId}
+          ns={ns}
+          id={id}
+          onSelectId={setGestureId}
+          controlsRef={controlsRef}
+        />
         <Stack spacing={{ xs: 1, sm: 1.5 }} sx={{ px: { xs: 1, sm: 1.75 }, py: { xs: 1, sm: 1.5 } }}>
           {source ? (
             <Chip
@@ -612,7 +639,12 @@ export function PhotoCursor({ imageId }: { imageId: string }) {
               }}
             />
           ) : null}
-          <PhotoNav previousHref={previousHref} nextHref={nextHref} />
+          <PhotoNav
+            previousHref={previousHref}
+            nextHref={nextHref}
+            onPrevious={previousHref ? scrollPrevious : null}
+            onNext={nextHref ? scrollNext : null}
+          />
         </Stack>
       </Paper>
 
@@ -641,7 +673,7 @@ export function PhotoRouteFallback() {
       <Paper variant="outlined" sx={{ borderRadius: 2.5, overflow: "hidden" }}>
         <Skeleton variant="rectangular" sx={{ ...photoStageSx, animation: "wave" }} />
         <Stack spacing={1.5} sx={{ p: 1.5 }}>
-          <PhotoNav previousHref={null} nextHref={null} />
+          <PhotoNav previousHref={null} nextHref={null} onPrevious={null} onNext={null} />
         </Stack>
       </Paper>
     </Stack>
