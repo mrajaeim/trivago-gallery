@@ -3,6 +3,7 @@ import Container from "@mui/material/Container";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import { AppLink } from "@/components/next-link";
+import { PageBreadcrumbs } from "@/components/page-breadcrumbs";
 
 export default function NotFound() {
   return (
@@ -21,6 +22,9 @@ export default function NotFound() {
       }}
     >
       <Stack spacing={2}>
+        <PageBreadcrumbs
+          items={[{ label: "Home", href: "/" }, { label: "Not found" }]}
+        />
         <Typography variant="h5" component="h1">
           Accommodation not found
         </Typography>

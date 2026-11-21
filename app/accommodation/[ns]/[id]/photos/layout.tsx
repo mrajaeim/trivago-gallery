@@ -1,13 +1,17 @@
 import { Suspense, type ReactNode } from "react";
 import Container from "@mui/material/Container";
+import Stack from "@mui/material/Stack";
 import { notFound } from "next/navigation";
+import { PhotoTrail } from "@/components/page-breadcrumbs";
 import {
   PhotoGalleryProvider,
   PhotoRouteFallback,
   type BrowserPhoto,
 } from "@/components/photo-browser";
 import { PhotoGalleryNotice } from "@/components/photo-view";
+import { accommodationLabel } from "@/lib/trivago/accommodation-name";
 import { fetchAccommodationImages, readRouteNsid } from "@/lib/trivago/gallery";
+import { accommodationPath } from "@/lib/trivago/gallery-shared";
 
 const pageSx = {
   flex: 1,
@@ -33,9 +37,23 @@ async function PhotoGallery({
     notFound();
   }
 
-  const result = await fetchAccommodationImages(nsid);
+  const [result, label] = await Promise.all([
+    fetchAccommodationImages(nsid),
+    accommodationLabel(nsid),
+  ]);
+  const trail = (
+    <PhotoTrail
+      label={label}
+      href={accommodationPath(nsid.ns, nsid.id)}
+    />
+  );
+
   if (!result.ok) {
-    return <PhotoGalleryNotice failure={result} nsid={nsid} />;
+    return (
+      <PhotoGalleryNotice failure={result} nsid={nsid}>
+        {trail}
+      </PhotoGalleryNotice>
+    );
   }
 
   const images: BrowserPhoto[] = result.images.map((image) => ({
@@ -47,9 +65,12 @@ async function PhotoGallery({
   }));
 
   return (
-    <PhotoGalleryProvider images={images} ns={nsid.ns} id={nsid.id}>
-      {children}
-    </PhotoGalleryProvider>
+    <Stack spacing={2}>
+      {trail}
+      <PhotoGalleryProvider images={images} ns={nsid.ns} id={nsid.id}>
+        {children}
+      </PhotoGalleryProvider>
+    </Stack>
   );
 }
 

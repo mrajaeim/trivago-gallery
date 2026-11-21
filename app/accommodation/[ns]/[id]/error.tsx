@@ -5,6 +5,7 @@ import Container from "@mui/material/Container";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import { useEffect } from "react";
+import { PageBreadcrumbs } from "@/components/page-breadcrumbs";
 
 export default function Error({
   error,
@@ -33,6 +34,9 @@ export default function Error({
       }}
     >
       <Stack spacing={2}>
+        <PageBreadcrumbs
+          items={[{ label: "Home", href: "/" }, { label: "Error" }]}
+        />
         <Typography variant="h5" component="h1">
           Something went wrong
         </Typography>

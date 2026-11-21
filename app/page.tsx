@@ -3,6 +3,7 @@ import Container from "@mui/material/Container";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import { ListingCard, ListingCardSkeleton } from "@/components/listing-card";
+import { HomeCrumbs } from "@/components/page-breadcrumbs";
 import { SAMPLE_ACCOMMODATION } from "@/lib/trivago/highlights";
 
 const pageSx = {
@@ -20,6 +21,7 @@ const pageSx = {
 export default function Home() {
   return (
     <Container component="main" maxWidth={false} sx={pageSx}>
+      <HomeCrumbs />
       <Stack component="header" spacing={1.5}>
         <Typography variant="h4" component="h1">
           trivago gallery
