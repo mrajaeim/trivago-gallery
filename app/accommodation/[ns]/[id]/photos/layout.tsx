@@ -20,8 +20,8 @@ const pageSx = {
   width: "100%",
   maxWidth: "56rem",
   mx: "auto",
-  px: 3,
-  py: 8,
+  px: { xs: 1.25, sm: 3 },
+  py: { xs: 2.5, sm: 8 },
 } as const;
 
 async function PhotoGallery({
@@ -65,7 +65,7 @@ async function PhotoGallery({
   }));
 
   return (
-    <Stack spacing={2}>
+    <Stack spacing={{ xs: 1, sm: 2 }}>
       {trail}
       <PhotoGalleryProvider images={images} ns={nsid.ns} id={nsid.id}>
         {children}
