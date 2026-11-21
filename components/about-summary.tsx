@@ -19,11 +19,11 @@ export function AboutSummary({ text }: { text: string }) {
 
   const [expanded, setExpanded] = useState(false);
   const [truncated, setTruncated] = useState(false);
-
-  // Reset the presentation when the description changes.
-  useLayoutEffect(() => {
+  const [trackedText, setTrackedText] = useState(text);
+  if (trackedText !== text) {
+    setTrackedText(text);
     setExpanded(false);
-  }, [text]);
+  }
 
   useLayoutEffect(() => {
     const element = textRef.current;
