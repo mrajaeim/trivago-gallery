@@ -16,6 +16,11 @@ export function CdnImage({
   height,
   alt,
   loading = "lazy",
+  srcSet,
+  sizes,
+  fetchPriority,
+  decoding,
+  draggable,
   sx,
 }: {
   src: string | null;
@@ -23,6 +28,11 @@ export function CdnImage({
   height: number;
   alt: string;
   loading?: "lazy" | "eager";
+  srcSet?: string;
+  sizes?: string;
+  fetchPriority?: "high" | "low" | "auto";
+  decoding?: "async" | "sync" | "auto";
+  draggable?: boolean;
   sx?: SxProps<Theme>;
 }) {
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
@@ -55,10 +65,15 @@ export function CdnImage({
     <Box
       component="img"
       src={src}
+      srcSet={srcSet}
+      sizes={sizes}
       alt={alt}
       width={width}
       height={height}
       loading={loading}
+      fetchPriority={fetchPriority}
+      decoding={decoding}
+      draggable={draggable}
       onError={() => setFailedSrc(src)}
       sx={withSx(
         {
