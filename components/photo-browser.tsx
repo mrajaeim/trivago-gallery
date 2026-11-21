@@ -260,6 +260,7 @@ function PhotoStep({
       href={href}
       scroll={false}
       prefetch={false}
+      replace
       onClick={
         onStep
           ? (event) => {

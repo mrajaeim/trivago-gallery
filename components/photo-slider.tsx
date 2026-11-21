@@ -172,7 +172,8 @@ export function PhotoSlider({
         return;
       }
       committedId.current = selected.imageId;
-      window.history.pushState(null, "", photoPath(ns, id, selected.imageId));
+      // Replace the current photo URL so Back leaves the viewer instead of stepping through photos.
+      window.history.replaceState(null, "", photoPath(ns, id, selected.imageId));
     };
 
     const onPointerDown = () => {
