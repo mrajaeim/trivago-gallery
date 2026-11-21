@@ -38,43 +38,6 @@ export function AppLink({
   );
 }
 
-export function NavButtonLink({
-  href,
-  scroll,
-  children,
-  startIcon,
-  sx,
-}: {
-  href: string;
-  scroll?: boolean;
-  children: ReactNode;
-  startIcon?: ReactNode;
-  sx?: SxProps<Theme>;
-}) {
-  return (
-    <Button
-      component={Link}
-      href={href}
-      scroll={scroll}
-      variant="text"
-      color="inherit"
-      size="small"
-      startIcon={startIcon}
-      sx={[
-        {
-          alignSelf: "flex-start",
-          color: "text.secondary",
-          textTransform: "none",
-          fontWeight: 500,
-        },
-        ...(sx ? [sx] : []),
-      ]}
-    >
-      {children}
-    </Button>
-  );
-}
-
 export function ButtonLink({
   href,
   scroll,
