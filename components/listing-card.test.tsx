@@ -17,7 +17,11 @@ vi.mock("@/lib/trivago/profile", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/trivago/profile")>();
   return {
     ...actual,
-    fetchAccommodationProfile: vi.fn(async () => null),
+    fetchAccommodationProfile: vi.fn(async () => ({
+      ok: false,
+      reason: "upstream-error",
+      retryable: true,
+    })),
   };
 });
 

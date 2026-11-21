@@ -1,3 +1,5 @@
+import { cacheLife, cacheTag } from "next/cache";
+import { connection } from "next/server";
 import type { Nsid } from "@/lib/trivago/highlights";
 
 export type StayPeriod = "night" | "stay";
@@ -7,6 +9,60 @@ export type StructuredPrice = {
   currency: string;
   period: StayPeriod;
 };
+
+export type ProfileFailureReason =
+  | "not-found"
+  | "timeout"
+  | "upstream-error"
+  | "invalid-response";
+
+export type ProfileFailure = {
+  ok: false;
+  reason: ProfileFailureReason;
+  retryable: boolean;
+};
+
+export type ProfileResult = { ok: true; data: AccommodationProfile } | ProfileFailure;
+
+const PROFILE_FAILURE_MESSAGE =
+  /^accommodation-profile:(not-found|timeout|upstream-error|invalid-response)$/;
+
+export function profileFailure(reason: ProfileFailureReason): ProfileFailure {
+  return {
+    ok: false,
+    reason,
+    retryable: reason === "timeout" || reason === "upstream-error",
+  };
+}
+
+export function classifyProfileHttpStatus(status: number): ProfileFailure {
+  return profileFailure(status === 404 ? "not-found" : "upstream-error");
+}
+
+function isTimeoutError(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "name" in error &&
+    (error.name === "TimeoutError" || error.name === "AbortError")
+  );
+}
+
+export function classifyProfileFailure(error: unknown): ProfileFailure {
+  const message = error instanceof Error ? error.message : "";
+  const match = PROFILE_FAILURE_MESSAGE.exec(message);
+  if (match) {
+    return profileFailure(match[1] as ProfileFailureReason);
+  }
+  if (isTimeoutError(error)) {
+    return profileFailure("timeout");
+  }
+  return profileFailure("upstream-error");
+}
+
+function unavailable(reason: ProfileFailureReason): never {
+  throw new Error(`accommodation-profile:${reason}`);
+}
 
 export type AccommodationProfile = {
   name: string;
@@ -375,9 +431,8 @@ function readPrice(value: unknown): {
 
   const amount = Number(match[2]);
   const period: StayPeriod = match[4].toLowerCase() === "stay" ? "stay" : "night";
-  const currency =
-    readCurrencyCode(match[1]) ?? readCurrencyCode(match[3]) ?? "USD";
-  if (!Number.isFinite(amount)) {
+  const currency = readCurrencyCode(match[1]) ?? readCurrencyCode(match[3]);
+  if (!currency || !Number.isFinite(amount)) {
     return { price: null, priceText: text };
   }
 
@@ -437,30 +492,45 @@ export function readProfile(html: string, nsid: Nsid): AccommodationProfile | nu
 async function loadAccommodationProfile(
   ns: number,
   id: number,
-): Promise<AccommodationProfile | null> {
+): Promise<AccommodationProfile> {
   "use cache";
+  cacheLife({ stale: 300, revalidate: 3600, expire: 21600 });
+  cacheTag(`accommodation-profile:${ns}:${id}`);
 
-  const response = await fetch(
-    `https://www.trivago.com/en-US/odr/?search=${ns}-${id}`,
-    {
+  let response: Response;
+  try {
+    response = await fetch(`https://www.trivago.com/en-US/odr/?search=${ns}-${id}`, {
+      cache: "no-store",
       headers: { "accept-language": "en-US,en;q=0.9" },
       signal: AbortSignal.timeout(12_000),
-    },
-  );
-
-  if (!response.ok) {
-    throw new Error(`Accommodation profile request failed (${response.status}).`);
+    });
+  } catch (error) {
+    unavailable(isTimeoutError(error) ? "timeout" : "upstream-error");
   }
 
-  return readProfile(await response.text(), { ns, id });
+  if (!response.ok) {
+    unavailable(classifyProfileHttpStatus(response.status).reason);
+  }
+
+  const profile = readProfile(await response.text(), { ns, id });
+  if (!profile) {
+    unavailable("invalid-response");
+  }
+  return profile;
 }
 
-export async function fetchAccommodationProfile(
-  nsid: Nsid,
-): Promise<AccommodationProfile | null> {
+export async function fetchAccommodationProfile(nsid: Nsid): Promise<ProfileResult> {
+  // Postpone the cached read until a real request so next build does not call trivago.
+  await connection();
   try {
-    return await loadAccommodationProfile(nsid.ns, nsid.id);
-  } catch {
-    return null;
+    const data = await loadAccommodationProfile(nsid.ns, nsid.id);
+    return { ok: true, data };
+  } catch (error) {
+    const result = classifyProfileFailure(error);
+    console.error(
+      `Accommodation profile ${nsid.ns}/${nsid.id} unavailable: ${result.reason}.`,
+      error,
+    );
+    return result;
   }
 }

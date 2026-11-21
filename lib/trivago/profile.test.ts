@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { readProfile } from "@/lib/trivago/profile";
+import {
+  classifyProfileFailure,
+  classifyProfileHttpStatus,
+  readProfile,
+} from "@/lib/trivago/profile";
 
 const nsid = { ns: 100, id: 102762 };
 
@@ -93,8 +97,16 @@ describe("readProfile", () => {
     expect(readProfile(html, nsid)?.amenities).toEqual(["WiFi", "Pool"]);
   });
 
-  it("assumes USD when the source omits an explicit currency", () => {
+  it("keeps the source text when a price omits its currency", () => {
     const html = page([hotel("Requested Stay", { priceRange: "From 102 per night" })]);
+    const profile = readProfile(html, nsid);
+
+    expect(profile?.price).toBeNull();
+    expect(profile?.priceText).toBe("From 102 per night");
+  });
+
+  it("maps an explicit dollar sign to USD", () => {
+    const html = page([hotel("Requested Stay", { priceRange: "from $102 per night" })]);
     const profile = readProfile(html, nsid);
 
     expect(profile?.price).toEqual({
@@ -102,7 +114,6 @@ describe("readProfile", () => {
       currency: "USD",
       period: "night",
     });
-    expect(profile?.priceText).toBe("From 102 per night");
   });
 
   it("models a price only when amount, currency, and period are all present", () => {
@@ -189,6 +200,44 @@ describe("readProfile", () => {
       checkOut: null,
       summary: null,
       amenities: [],
+    });
+  });
+});
+
+describe("classifyProfileFailure", () => {
+  it("keeps the reason encoded by the profile loader", () => {
+    expect(classifyProfileFailure(new Error("accommodation-profile:invalid-response"))).toEqual({
+      ok: false,
+      reason: "invalid-response",
+      retryable: false,
+    });
+    expect(classifyProfileFailure(new Error("accommodation-profile:not-found"))).toEqual({
+      ok: false,
+      reason: "not-found",
+      retryable: false,
+    });
+  });
+
+  it("treats timeouts as retryable and unknown failures as upstream errors", () => {
+    expect(classifyProfileFailure({ name: "TimeoutError" })).toEqual({
+      ok: false,
+      reason: "timeout",
+      retryable: true,
+    });
+    expect(classifyProfileFailure(new Error("socket hang up"))).toEqual({
+      ok: false,
+      reason: "upstream-error",
+      retryable: true,
+    });
+  });
+
+  it("maps HTTP 404 separately from other status codes", () => {
+    expect(classifyProfileHttpStatus(404).reason).toBe("not-found");
+    expect(classifyProfileHttpStatus(404).retryable).toBe(false);
+    expect(classifyProfileHttpStatus(503)).toEqual({
+      ok: false,
+      reason: "upstream-error",
+      retryable: true,
     });
   });
 });

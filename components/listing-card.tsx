@@ -716,9 +716,10 @@ async function ListingCardProfile({
   titleComponent: "h1" | "h2";
   hideTitleInChrome?: boolean;
 }) {
-  const profile =
-    (await fetchAccommodationProfile(nsid)) ??
-    emptyAccommodationProfile(accommodationFallbackLabel(nsid));
+  const profileResult = await fetchAccommodationProfile(nsid);
+  const profile = profileResult.ok
+    ? profileResult.data
+    : emptyAccommodationProfile(accommodationFallbackLabel(nsid));
 
   return (
     <>

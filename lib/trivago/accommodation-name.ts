@@ -5,7 +5,7 @@ export async function fetchAccommodationDisplayName(
   nsid: Nsid,
 ): Promise<string | null> {
   const profile = await fetchAccommodationProfile(nsid);
-  return profile?.name ?? null;
+  return profile.ok ? profile.data.name : null;
 }
 
 export function accommodationFallbackLabel(nsid: Nsid): string {
