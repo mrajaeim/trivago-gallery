@@ -13,16 +13,32 @@ import Divider from "@mui/material/Divider";
 import IconButton from "@mui/material/IconButton";
 import Stack from "@mui/material/Stack";
 import Tooltip from "@mui/material/Tooltip";
-import Typography from "@mui/material/Typography";
+import type { SxProps, Theme } from "@mui/material/styles";
 import { visuallyHidden } from "@mui/utils";
 import { useParams, useRouter } from "next/navigation";
 import { Suspense, useEffect, useRef, useState, type ReactNode } from "react";
 
 const dealGreen = "#008a05";
 
+const toolbarControlSize = { xs: 36, sm: 40 } as const;
+
 const toolbarIconSx = {
   borderRadius: 1.5,
+  width: toolbarControlSize,
+  height: toolbarControlSize,
+  p: 0,
+  flexShrink: 0,
   "&:hover": { bgcolor: "action.selected" },
+} as const;
+
+const toolbarGroupSx = {
+  alignItems: "center",
+  p: 0,
+  borderRadius: 1.75,
+  border: "1px solid",
+  borderColor: "divider",
+  bgcolor: "action.hover",
+  overflow: "hidden",
 } as const;
 
 function slotIsHidden(node: HTMLElement) {
@@ -80,6 +96,7 @@ function ToolbarIconButton({
   disabled,
   href,
   highlight,
+  wrapperSx,
   children,
 }: {
   label: string;
@@ -87,8 +104,13 @@ function ToolbarIconButton({
   disabled?: boolean;
   href?: string;
   highlight?: boolean;
+  wrapperSx?: SxProps<Theme>;
   children: ReactNode;
 }) {
+  const buttonSx = {
+    ...toolbarIconSx,
+    ...(highlight ? { color: dealGreen } : null),
+  };
   const button = href ? (
     <IconButton
       component="a"
@@ -97,81 +119,22 @@ function ToolbarIconButton({
       rel="noopener noreferrer"
       aria-label={label}
       disabled={disabled}
-      sx={{
-        ...toolbarIconSx,
-        ...(highlight ? { color: dealGreen } : null),
-      }}
+      sx={buttonSx}
     >
       {children}
     </IconButton>
   ) : (
-    <IconButton
-      aria-label={label}
-      onClick={onClick}
-      disabled={disabled}
-      sx={{
-        ...toolbarIconSx,
-        ...(highlight ? { color: dealGreen } : null),
-      }}
-    >
+    <IconButton aria-label={label} onClick={onClick} disabled={disabled} sx={buttonSx}>
       {children}
     </IconButton>
   );
 
   return (
-    <Tooltip title={label} enterDelay={500}>
-      <span>{button}</span>
+    <Tooltip title={label} enterDelay={500} disableTouchListener>
+      <Box component="span" sx={[{ display: "inline-flex" }, wrapperSx ?? {}]}>
+        {button}
+      </Box>
     </Tooltip>
-  );
-}
-
-function AccommodationDialogHeading() {
-  const [title, setTitle] = useState<string | null>(null);
-
-  useEffect(() => {
-    const sync = () => {
-      const node = document.getElementById("accommodation-title");
-      const next = node?.textContent?.trim() ?? null;
-      setTitle(next && next.length > 0 ? next : null);
-    };
-
-    sync();
-    const node = document.getElementById("accommodation-title");
-    const observer = new MutationObserver(sync);
-    if (node) {
-      observer.observe(node, { childList: true, subtree: true, characterData: true });
-    }
-
-    return () => observer.disconnect();
-  }, []);
-
-  const displayTitle = title ?? "Accommodation";
-
-  return (
-    <Stack spacing={0.25} sx={{ minWidth: 0, flex: 1, pr: 1 }}>
-      <Typography
-        variant="overline"
-        color="text.secondary"
-        sx={{ lineHeight: 1.1, letterSpacing: "0.08em" }}
-      >
-        Hotel gallery
-      </Typography>
-      <Typography
-        id="accommodation-dialog-title"
-        variant="subtitle1"
-        component="p"
-        title={displayTitle}
-        sx={{
-          fontWeight: 700,
-          lineHeight: 1.25,
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-          whiteSpace: "nowrap",
-        }}
-      >
-        {displayTitle}
-      </Typography>
-    </Stack>
   );
 }
 
@@ -200,19 +163,12 @@ export function PhotoModalToolbar({
   const fullScreenLabel = fullScreen ? "Exit full screen" : "Full screen";
 
   return (
-    <Stack direction="row" spacing={0.75} sx={{ alignItems: "center", flexShrink: 0 }}>
-      <Stack
-        direction="row"
-        spacing={0.25}
-        sx={{
-          alignItems: "center",
-          p: 0.25,
-          borderRadius: 2,
-          border: "1px solid",
-          borderColor: "divider",
-          bgcolor: "action.hover",
-        }}
-      >
+    <Stack
+      direction="row"
+      spacing={0.75}
+      sx={{ alignItems: "center", flexShrink: 0 }}
+    >
+      <Stack direction="row" spacing={0} sx={toolbarGroupSx}>
         <ToolbarIconButton
           label={shareLabel}
           onClick={onShare}
@@ -221,26 +177,39 @@ export function PhotoModalToolbar({
         >
           <ShareIcon fontSize="small" />
         </ToolbarIconButton>
-        <ToolbarIconButton label={fullScreenLabel} onClick={onToggleFullScreen}>
+        <ToolbarIconButton
+          label={fullScreenLabel}
+          onClick={onToggleFullScreen}
+          wrapperSx={{ display: { xs: "none", sm: "inline-flex" } }}
+        >
           {fullScreen ? <FullscreenExitIcon fontSize="small" /> : <FullscreenIcon fontSize="small" />}
         </ToolbarIconButton>
         <ToolbarIconButton
           label="Open in new tab"
-          href={destinationReady ? href : undefined}
+          href={destinationReady && href ? href : undefined}
           disabled={!destinationReady}
         >
           <OpenInNewIcon fontSize="small" />
         </ToolbarIconButton>
       </Stack>
-      <Divider orientation="vertical" flexItem sx={{ height: 32, alignSelf: "center" }} />
-      <Tooltip title="Close" enterDelay={500}>
+      <Divider
+        orientation="vertical"
+        flexItem
+        sx={{ height: toolbarControlSize, alignSelf: "center" }}
+      />
+      <Tooltip title="Close" enterDelay={500} disableTouchListener>
         <IconButton
           aria-label="Close"
           onClick={onClose}
           sx={{
-            borderRadius: 1.5,
+            ...toolbarIconSx,
             bgcolor: "action.hover",
-            "&:hover": { bgcolor: "error.dark", color: "error.contrastText" },
+            boxShadow: (theme) => `inset 0 0 0 1px ${theme.palette.divider}`,
+            "&:hover": {
+              bgcolor: "error.dark",
+              color: "error.contrastText",
+              boxShadow: "none",
+            },
           }}
         >
           <CloseIcon fontSize="small" />
@@ -287,7 +256,13 @@ function RoutedPhotoModalToolbar({
   );
 }
 
-export function PhotoModal({ children }: { children: ReactNode }) {
+export function PhotoModal({
+  title,
+  children,
+}: {
+  title: ReactNode;
+  children: ReactNode;
+}) {
   const router = useRouter();
   const slotRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(true);
@@ -336,46 +311,47 @@ export function PhotoModal({ children }: { children: ReactNode }) {
         onClose={close}
         slotProps={{
           paper: {
-            sx: fullScreen
-              ? {
-                  m: 0,
-                  width: "100%",
-                  maxWidth: "100%",
-                  height: "100%",
-                  maxHeight: "100%",
-                  display: "flex",
-                  flexDirection: "column",
-                  overflow: "hidden",
-                  borderRadius: 0,
-                }
-              : {
-                  width: "min(100% - 1.5rem, 56rem)",
-                  maxWidth: "56rem",
-                  height: "calc(100dvh - 1.5rem)",
-                  maxHeight: "calc(100dvh - 1.5rem)",
-                  display: "flex",
-                  flexDirection: "column",
-                  overflow: "hidden",
-                },
+            sx: {
+              display: "flex",
+              flexDirection: "column",
+              overflow: "hidden",
+              m: { xs: 0, sm: fullScreen ? 0 : "0.75rem" },
+              width: {
+                xs: "100%",
+                sm: fullScreen ? "100%" : "min(100% - 1.5rem, 56rem)",
+              },
+              maxWidth: { xs: "100%", sm: fullScreen ? "100%" : "56rem" },
+              height: {
+                xs: "100dvh",
+                sm: fullScreen ? "100%" : "calc(100dvh - 1.5rem)",
+              },
+              maxHeight: {
+                xs: "100dvh",
+                sm: fullScreen ? "100%" : "calc(100dvh - 1.5rem)",
+              },
+              borderRadius: { xs: 0, sm: fullScreen ? 0 : 2 },
+            },
           },
         }}
       >
         <DialogTitle
+          id="accommodation-dialog-title"
           component="div"
           sx={{
             display: "flex",
+            flexDirection: "row",
             alignItems: "center",
             justifyContent: "space-between",
-            gap: { xs: 1, sm: 2 },
+            gap: { xs: 0.75, sm: 2 },
             flexShrink: 0,
-            py: { xs: 1.25, sm: 1.5 },
-            px: { xs: 1.5, sm: 2 },
+            py: { xs: 1, sm: 1.5 },
+            px: { xs: 1.25, sm: 2 },
             borderBottom: "1px solid",
             borderColor: "divider",
             bgcolor: "background.paper",
           }}
         >
-          <AccommodationDialogHeading />
+          {title}
           <Suspense
             fallback={
               <PhotoModalToolbar
@@ -408,10 +384,17 @@ export function PhotoModal({ children }: { children: ReactNode }) {
           data-photos-scroller=""
           sx={{
             pt: 0,
+            px: { xs: 1.25, sm: 3 },
+            pb: { xs: 2.5, sm: 3 },
             flex: "1 1 auto",
             minHeight: 0,
+            width: "100%",
+            maxWidth: "100%",
+            boxSizing: "border-box",
             overflowY: "auto",
+            overflowX: "hidden",
             scrollBehavior: "smooth",
+            WebkitOverflowScrolling: "touch",
             "@media (prefers-reduced-motion: reduce)": {
               scrollBehavior: "auto",
             },
