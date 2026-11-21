@@ -7,6 +7,7 @@ import { AppLink } from "@/components/next-link";
 export type Crumb = {
   label: string;
   href?: string;
+  scroll?: boolean;
 };
 
 export function BreadcrumbFallback() {
@@ -97,6 +98,7 @@ export function PageBreadcrumbs({ items }: { items: Crumb[] }) {
           <AppLink
             key={item.href}
             href={item.href}
+            scroll={item.scroll}
             variant="body2"
             underline="hover"
             color="inherit"
@@ -126,7 +128,7 @@ export function PhotoTrail({
     <PageBreadcrumbs
       items={[
         { label: "Home", href: "/" },
-        { label, href },
+        { label, href, scroll: false },
         { label: "Photo" },
       ]}
     />
