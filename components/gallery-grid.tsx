@@ -5,7 +5,6 @@ import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import MuiLink from "@mui/material/Link";
 import Paper from "@mui/material/Paper";
-import Skeleton from "@mui/material/Skeleton";
 import ToggleButton from "@mui/material/ToggleButton";
 import ToggleButtonGroup from "@mui/material/ToggleButtonGroup";
 import Typography from "@mui/material/Typography";
@@ -14,7 +13,6 @@ import Link from "next/link";
 import { CdnImage } from "@/components/cdn-image";
 import {
   galleryMosaicColumns,
-  galleryMosaicSkeleton,
   mosaicCellSx,
   mosaicTiles,
 } from "@/components/gallery-mosaic";
@@ -88,27 +86,6 @@ const filterToggleSx = {
   },
 } as const;
 
-function FilterGridSkeleton() {
-  return (
-    <Box
-      aria-hidden="true"
-      sx={{
-        display: "grid",
-        gap: 1.5,
-        gridTemplateColumns: galleryMosaicColumns,
-      }}
-    >
-      {galleryMosaicSkeleton.map((tile, index) => (
-        <Skeleton
-          key={`${tile.desktop.span}-${tile.mobile.span}-${index}`}
-          variant="rounded"
-          sx={mosaicCellSx(tile)}
-        />
-      ))}
-    </Box>
-  );
-}
-
 function FilterChipCount({ count }: { count: number }) {
   return (
     <Box
@@ -166,18 +143,7 @@ export function GalleryGrid({
   id: number;
 }) {
   const [filter, setFilter] = useState("all");
-  const [shown, setShown] = useState("all");
-  const [filtering, setFiltering] = useState(false);
-  const filterTimer = useRef<number | null>(null);
   const filterScrollerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    return () => {
-      if (filterTimer.current !== null) {
-        window.clearTimeout(filterTimer.current);
-      }
-    };
-  }, []);
 
   useEffect(() => {
     const scroller = filterScrollerRef.current;
@@ -201,22 +167,13 @@ export function GalleryGrid({
       return;
     }
     setFilter(value);
-    setFiltering(true);
-    if (filterTimer.current !== null) {
-      window.clearTimeout(filterTimer.current);
-    }
-    filterTimer.current = window.setTimeout(() => {
-      setShown(value);
-      setFiltering(false);
-      filterTimer.current = null;
-    }, 280);
   };
 
   const visible =
-    shown === "all"
+    filter === "all"
       ? images
       : images.filter((image) =>
-          image.groups.some((group) => groupKey(group) === shown),
+          image.groups.some((group) => groupKey(group) === filter),
         );
   const placed = mosaicTiles(visible.length).map((tile, index) => ({
     image: visible[index],
@@ -341,9 +298,7 @@ export function GalleryGrid({
           reflect the full gallery.
         </Alert>
       ) : null}
-      {filtering ? (
-        <FilterGridSkeleton />
-      ) : visible.length === 0 ? (
+      {visible.length === 0 ? (
         <Alert severity="info">
           No photos in this group were in the loaded page.
         </Alert>
