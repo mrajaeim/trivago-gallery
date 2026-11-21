@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { gql } from "@apollo/client";
 import {
   CombinedGraphQLErrors,
@@ -88,6 +89,8 @@ export type HighlightView = {
   description: string;
   sentiment: HighlightSentiment;
   imageSrc: string | null;
+  aspectRating: number | null;
+  aspectReviewLabel: string | null;
 };
 
 export type HighlightsResult =
@@ -110,6 +113,23 @@ function readImageSrc(highlight: Record<string, unknown>): string | null {
   return urlTail ? galleryImageUrl(urlTail, 800) : null;
 }
 
+function readAspectRating(value: Record<string, unknown>): {
+  aspectRating: number | null;
+  aspectReviewLabel: string | null;
+} {
+  const info = value.scoredAspectThemeRatingInfo;
+  if (!isRecord(info) || typeof info.rating !== "number" || !Number.isFinite(info.rating)) {
+    return { aspectRating: null, aspectReviewLabel: null };
+  }
+
+  const labelRecord = isRecord(info.reviewCountLabel) ? info.reviewCountLabel : null;
+  const translation = labelRecord && isRecord(labelRecord.translation) ? labelRecord.translation : null;
+  return {
+    aspectRating: info.rating,
+    aspectReviewLabel: readString(translation?.value),
+  };
+}
+
 function readHighlight(value: unknown): HighlightView | null {
   if (!isRecord(value)) {
     return null;
@@ -129,6 +149,7 @@ function readHighlight(value: unknown): HighlightView | null {
     description,
     sentiment,
     imageSrc: readImageSrc(value),
+    ...readAspectRating(value),
   };
 }
 
@@ -229,41 +250,48 @@ function failure(error: unknown): HighlightsResult {
   return { ok: false, status: null, messages: [message] };
 }
 
-export async function fetchAccommodationHighlights(
+const loadAccommodationHighlights = cache(
+  async (ns: number, id: number): Promise<HighlightsResult> => {
+    const nsid = { ns, id };
+    const variables: AccommodationHighlightsVariables = {
+      getAccommodationDetailsInput: { nsids: [nsid] },
+      aiGeneratedInput: { sorting: { searchConcepts: [] } },
+      includeExtendedFields: true,
+      includeRelativeScore: true,
+      includeRatingInfo: true,
+    };
+
+    try {
+      const result = await query<
+        AccommodationHighlightsData,
+        AccommodationHighlightsVariables
+      >({
+        query: accommodationHighlights,
+        variables,
+        fetchPolicy: "no-cache",
+        errorPolicy: "none",
+      });
+
+      const { matched, highlights } = readMatchingHighlights(result.data, nsid);
+      if (!matched) {
+        return {
+          ok: false,
+          status: result.data ? persistedDataStatus(result.data) : null,
+          messages: [
+            `No accommodation record matched ns ${nsid.ns} id ${nsid.id}.`,
+          ],
+        };
+      }
+
+      return { ok: true, highlights };
+    } catch (error) {
+      return failure(error);
+    }
+  },
+);
+
+export function fetchAccommodationHighlights(
   nsid: Nsid,
 ): Promise<HighlightsResult> {
-  const variables: AccommodationHighlightsVariables = {
-    getAccommodationDetailsInput: { nsids: [nsid] },
-    aiGeneratedInput: { sorting: { searchConcepts: [] } },
-    includeExtendedFields: true,
-    includeRelativeScore: true,
-    includeRatingInfo: false,
-  };
-
-  try {
-    const result = await query<
-      AccommodationHighlightsData,
-      AccommodationHighlightsVariables
-    >({
-      query: accommodationHighlights,
-      variables,
-      fetchPolicy: "no-cache",
-      errorPolicy: "none",
-    });
-
-    const { matched, highlights } = readMatchingHighlights(result.data, nsid);
-    if (!matched) {
-      return {
-        ok: false,
-        status: result.data ? persistedDataStatus(result.data) : null,
-        messages: [
-          `No accommodation record matched ns ${nsid.ns} id ${nsid.id}.`,
-        ],
-      };
-    }
-
-    return { ok: true, highlights };
-  } catch (error) {
-    return failure(error);
-  }
+  return loadAccommodationHighlights(nsid.ns, nsid.id);
 }
