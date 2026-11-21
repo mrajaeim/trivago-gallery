@@ -6,7 +6,6 @@ import Button from "@mui/material/Button";
 import MuiLink from "@mui/material/Link";
 import Paper from "@mui/material/Paper";
 import Skeleton from "@mui/material/Skeleton";
-import Stack from "@mui/material/Stack";
 import ToggleButton from "@mui/material/ToggleButton";
 import ToggleButtonGroup from "@mui/material/ToggleButtonGroup";
 import Typography from "@mui/material/Typography";
@@ -253,21 +252,6 @@ export function GalleryGrid({
   const positionById = new Map(
     images.map((image, index) => [image.imageId, index + 1]),
   );
-  const activeGroup = groups.find((group) => groupKey(group) === filter);
-  const areaLabel =
-    filter === "all"
-      ? "all areas"
-      : activeGroup
-        ? groupLabel(activeGroup.ns, activeGroup.id)
-        : "this area";
-  const summary = filtering
-    ? `Loading ${areaLabel} photos.`
-    : visible.length === 0
-      ? `No photos from ${areaLabel} are in the loaded set.`
-      : filter === "all"
-        ? `Showing ${visible.length} photo${visible.length === 1 ? "" : "s"}.`
-        : `Showing ${visible.length} of ${activeGroup?.imageCount ?? visible.length} ${areaLabel} photo${visible.length === 1 ? "" : "s"}.`;
-
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}>
       <Box
@@ -357,44 +341,26 @@ export function GalleryGrid({
             </ToggleButtonGroup>
           </Box>
         </Box>
-        <Stack
-          direction="row"
-          spacing={0.5}
-          sx={{ alignItems: "center", flexShrink: 0, maxWidth: { xs: "38%", sm: "none" } }}
-        >
-          <Typography
-            variant="caption"
-            color="text.secondary"
-            aria-live="polite"
-            noWrap
-            title={summary}
+        {filter !== "all" ? (
+          <Button
+            size="small"
+            variant="text"
+            onClick={() => selectFilter("all")}
             sx={{
-              opacity: filtering ? 0.65 : 1,
-              transition: "opacity 0.2s ease",
+              flexShrink: 0,
+              color: dealGreen,
+              fontWeight: 700,
+              fontSize: "0.75rem",
+              textTransform: "none",
+              minWidth: 0,
+              px: 0.5,
+              py: 0.25,
+              lineHeight: 1.2,
             }}
           >
-            {summary}
-          </Typography>
-          {filter !== "all" ? (
-            <Button
-              size="small"
-              variant="text"
-              onClick={() => selectFilter("all")}
-              sx={{
-                color: dealGreen,
-                fontWeight: 700,
-                fontSize: "0.75rem",
-                textTransform: "none",
-                minWidth: 0,
-                px: 0.5,
-                py: 0.25,
-                lineHeight: 1.2,
-              }}
-            >
-              Clear
-            </Button>
-          ) : null}
-        </Stack>
+            Clear
+          </Button>
+        ) : null}
       </Box>
       {partial ? (
         <Alert severity="info" variant="outlined" sx={{ py: 0.5 }}>
