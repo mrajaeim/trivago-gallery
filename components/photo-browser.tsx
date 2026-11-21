@@ -5,13 +5,7 @@ import Button from "@mui/material/Button";
 import Skeleton from "@mui/material/Skeleton";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useState,
-  type ReactNode,
-} from "react";
+import { createContext, useContext, type ReactNode } from "react";
 import { CdnImage } from "@/components/cdn-image";
 import { AppLink, ButtonLink } from "@/components/next-link";
 import {
@@ -34,8 +28,6 @@ type GalleryContextValue = {
   images: BrowserPhoto[];
   ns: number;
   id: number;
-  shownId: string | null;
-  setShownId: (imageId: string) => void;
 };
 
 const GalleryContext = createContext<GalleryContextValue | null>(null);
@@ -68,11 +60,8 @@ export function PhotoGalleryProvider({
   id: number;
   children: ReactNode;
 }) {
-  const [shownId, setShownId] = useState<string | null>(null);
-
   return (
-    <GalleryContext.Provider value={{ images, ns, id, shownId, setShownId }}>
-      <PhotoStage />
+    <GalleryContext.Provider value={{ images, ns, id }}>
       {children}
     </GalleryContext.Provider>
   );
@@ -81,13 +70,9 @@ export function PhotoGalleryProvider({
 function PhotoNav({
   previousHref,
   nextHref,
-  onPrevious,
-  onNext,
 }: {
   previousHref: string | null;
   nextHref: string | null;
-  onPrevious?: () => void;
-  onNext?: () => void;
 }) {
   return (
     <Stack
@@ -96,10 +81,10 @@ function PhotoNav({
       aria-label="More photos"
       sx={{ alignItems: "center", justifyContent: "space-between" }}
     >
-      <ButtonLink href={previousHref} scroll={false} onClick={onPrevious}>
+      <ButtonLink href={previousHref} scroll={false}>
         Previous
       </ButtonLink>
-      <ButtonLink href={nextHref} scroll={false} onClick={onNext}>
+      <ButtonLink href={nextHref} scroll={false}>
         Next
       </ButtonLink>
     </Stack>
@@ -125,31 +110,16 @@ function BackToGallery({ ns, id }: { ns: number; id: number }) {
 }
 
 export function PhotoCursor({ imageId }: { imageId: string }) {
-  const { setShownId } = useGallery();
-
-  useEffect(() => {
-    setShownId(imageId);
-  }, [imageId, setShownId]);
-
-  return null;
-}
-
-function PhotoStage() {
-  const { images, ns, id, shownId, setShownId } = useGallery();
-  const index = images.findIndex((image) => image.imageId === shownId);
+  const { images, ns, id } = useGallery();
+  const index = images.findIndex((image) => image.imageId === imageId);
   const image = index >= 0 ? images[index] : null;
 
-  if (!shownId || !image) {
+  if (!image) {
     return (
       <Stack component="article" spacing={2}>
-        {shownId ? (
-          <Typography variant="h5" component="h1">
-            Photo unavailable
-          </Typography>
-        ) : (
-          <Skeleton variant="text" width={220} height={40} />
-        )}
-        <Skeleton variant="rounded" sx={photoFrameSx} />
+        <Typography variant="h5" component="h1">
+          Photo unavailable
+        </Typography>
         <PhotoNav previousHref={null} nextHref={null} />
         <BackToGallery ns={ns} id={id} />
       </Stack>
@@ -183,16 +153,9 @@ function PhotoStage() {
         sx={photoFrameSx}
       />
       {source ? <Typography color="text.secondary">{source}</Typography> : null}
-      {image.size ? (
-        <Typography variant="body2" color="text.secondary">
-          {image.size.width} × {image.size.height}
-        </Typography>
-      ) : null}
       <PhotoNav
         previousHref={previous ? photoPath(ns, id, previous.imageId) : null}
         nextHref={next ? photoPath(ns, id, next.imageId) : null}
-        onPrevious={previous ? () => setShownId(previous.imageId) : undefined}
-        onNext={next ? () => setShownId(next.imageId) : undefined}
       />
       <BackToGallery ns={ns} id={id} />
     </Stack>
