@@ -7,19 +7,23 @@ import ArrowForwardRoundedIcon from "@mui/icons-material/ArrowForwardRounded";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Chip from "@mui/material/Chip";
+import FormControl from "@mui/material/FormControl";
+import InputLabel from "@mui/material/InputLabel";
 import LinearProgress from "@mui/material/LinearProgress";
+import MenuItem from "@mui/material/MenuItem";
 import Paper from "@mui/material/Paper";
+import Select from "@mui/material/Select";
 import Skeleton from "@mui/material/Skeleton";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { createContext, useContext, useEffect, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { CdnImage } from "@/components/cdn-image";
 import {
   accommodationPath,
   fallbackImageSize,
-  groupTitles,
+  groupLabel,
   photoPath,
   type ImageSize,
 } from "@/lib/trivago/gallery-shared";
@@ -36,7 +40,60 @@ type GalleryContextValue = {
   images: BrowserPhoto[];
   ns: number;
   id: number;
+  area: string;
+  setArea: (area: string) => void;
 };
+
+function areaKey(group: { ns: number; id: number }) {
+  return `${group.ns}:${group.id}`;
+}
+
+function photoAreas(image: BrowserPhoto) {
+  const seen = new Set<string>();
+  const areas: Array<{ key: string; label: string }> = [];
+  for (const group of image.groups) {
+    const key = areaKey(group);
+    if (seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    areas.push({ key, label: groupLabel(group.ns, group.id) });
+  }
+  return areas;
+}
+
+function areaOptions(images: BrowserPhoto[]) {
+  const order: string[] = [];
+  const counts = new Map<string, { ns: number; id: number; count: number }>();
+  for (const image of images) {
+    const seen = new Set<string>();
+    for (const group of image.groups) {
+      const key = areaKey(group);
+      if (seen.has(key)) {
+        continue;
+      }
+      seen.add(key);
+      const current = counts.get(key);
+      if (current) {
+        current.count += 1;
+      } else {
+        counts.set(key, { ns: group.ns, id: group.id, count: 1 });
+        order.push(key);
+      }
+    }
+  }
+  return order.flatMap((key) => {
+    const option = counts.get(key);
+    return option ? [option] : [];
+  });
+}
+
+function inArea(image: BrowserPhoto, area: string) {
+  if (area === "all") {
+    return true;
+  }
+  return image.groups.some((group) => areaKey(group) === area);
+}
 
 const GalleryContext = createContext<GalleryContextValue | null>(null);
 
@@ -137,8 +194,10 @@ export function PhotoGalleryProvider({
   id: number;
   children: ReactNode;
 }) {
+  const [area, setArea] = useState("all");
+
   return (
-    <GalleryContext.Provider value={{ images, ns, id }}>
+    <GalleryContext.Provider value={{ images, ns, id, area, setArea }}>
       {children}
     </GalleryContext.Provider>
   );
@@ -313,14 +372,32 @@ export function PhotoPageActions({ ns, id }: { ns: number; id: number }) {
 
 export function PhotoCursor({ imageId }: { imageId: string }) {
   const router = useRouter();
-  const { images, ns, id } = useGallery();
+  const { images, ns, id, area, setArea } = useGallery();
   const index = images.findIndex((image) => image.imageId === imageId);
   const image = index >= 0 ? images[index] : null;
-
-  const previous = index > 0 ? images[index - 1] : null;
-  const next = index >= 0 && index < images.length - 1 ? images[index + 1] : null;
+  const options = areaOptions(images);
+  const visible = images.filter((item) => inArea(item, area));
+  const visibleIndex = image ? visible.findIndex((item) => item.imageId === image.imageId) : -1;
+  const browseIndex = visibleIndex >= 0 ? visibleIndex : index;
+  const browseImages = visibleIndex >= 0 ? visible : images;
+  const previous = browseIndex > 0 ? browseImages[browseIndex - 1] : null;
+  const next =
+    browseIndex >= 0 && browseIndex < browseImages.length - 1
+      ? browseImages[browseIndex + 1]
+      : null;
   const previousHref = previous ? photoPath(ns, id, previous.imageId) : null;
   const nextHref = next ? photoPath(ns, id, next.imageId) : null;
+
+  useEffect(() => {
+    if (!image || area === "all" || inArea(image, area)) {
+      return;
+    }
+    const first = images.find((item) => inArea(item, area));
+    if (!first) {
+      return;
+    }
+    router.replace(photoPath(ns, id, first.imageId), { scroll: false });
+  }, [area, image, images, ns, id, router]);
 
   useEffect(() => {
     if (!previousHref && !nextHref) {
@@ -368,34 +445,78 @@ export function PhotoCursor({ imageId }: { imageId: string }) {
 
   const frame = image.size ?? fallbackImageSize;
   const source = image.advertisers.length > 0 ? image.advertisers.join(", ") : null;
-  const titles = groupTitles(image.groups);
-  const positionLabel = `Photo ${index + 1} of ${images.length}`;
+  const areas = photoAreas(image);
+  const titles = areas.map((item) => item.label);
+  const total = browseImages.length;
+  const position = browseIndex >= 0 ? browseIndex + 1 : index + 1;
+  const positionLabel = `Photo ${position} of ${total}`;
   const title = titles.length > 0 ? titles.join(", ") : positionLabel;
-  const progress = images.length > 0 ? ((index + 1) / images.length) * 100 : 0;
-  const compactPosition = `${index + 1} / ${images.length}`;
+  const progress = total > 0 ? (position / total) * 100 : 0;
+  const compactPosition = `${position} / ${total}`;
+  const selectedArea = options.some((option) => areaKey(option) === area) ? area : "all";
 
   return (
     <Stack component="article" spacing={{ xs: 1, sm: 2.5 }}>
       <Stack spacing={{ xs: 0.5, sm: 1.25 }}>
-        {titles.length > 1 ? (
-          <Stack direction="row" useFlexGap spacing={0.5} sx={{ flexWrap: "wrap" }}>
-            {titles.map((area) => (
-              <Chip
-                key={area}
-                label={area}
-                size="small"
-                variant="outlined"
-                sx={{
-                  borderColor: dealGreen,
-                  color: dealGreen,
-                  fontWeight: 600,
-                  height: 26,
-                  fontSize: "0.75rem",
-                }}
-              />
-            ))}
+        <Stack
+          direction={{ xs: "column", sm: "row" }}
+          spacing={{ xs: 0.75, sm: 1.25 }}
+          sx={{ alignItems: { sm: "center" }, justifyContent: "space-between" }}
+        >
+          <Stack
+            direction="row"
+            useFlexGap
+            spacing={0.5}
+            sx={{ flexWrap: "wrap", alignItems: "center", minWidth: 0 }}
+          >
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              sx={{ fontWeight: 700, letterSpacing: "0.04em", textTransform: "uppercase", mr: 0.25 }}
+            >
+              This photo
+            </Typography>
+            {areas.length > 0 ? (
+              areas.map((item) => (
+                <Chip
+                  key={item.key}
+                  label={item.label}
+                  size="small"
+                  variant="outlined"
+                  sx={{
+                    borderColor: item.key === selectedArea ? dealGreen : "divider",
+                    color: item.key === selectedArea ? dealGreen : "text.primary",
+                    fontWeight: 700,
+                    height: 26,
+                    fontSize: "0.75rem",
+                  }}
+                />
+              ))
+            ) : (
+              <Typography variant="caption" color="text.secondary">
+                No area
+              </Typography>
+            )}
           </Stack>
-        ) : null}
+          {options.length > 0 ? (
+            <FormControl size="small" sx={{ width: { xs: "100%", sm: 200 }, flexShrink: 0 }}>
+              <InputLabel id="photo-area-filter">Show</InputLabel>
+              <Select
+                labelId="photo-area-filter"
+                label="Show"
+                value={selectedArea}
+                onChange={(event) => setArea(event.target.value)}
+              >
+                <MenuItem value="all">All ({images.length})</MenuItem>
+                {options.map((option) => (
+                  <MenuItem key={areaKey(option)} value={areaKey(option)}>
+                    {groupLabel(option.ns, option.id)} ({option.count})
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          ) : null}
+        </Stack>
         <Stack
           direction="row"
           spacing={1}

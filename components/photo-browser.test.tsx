@@ -71,4 +71,36 @@ describe("PhotoCursor", () => {
     expect(forwarded).toContain("/accommodation/100/102762/photos/first");
     expect(backed).toBe(opened);
   });
+
+  it("shows the current photo area and an all filter", () => {
+    const html = renderToStaticMarkup(
+      <PhotoGalleryProvider
+        images={[
+          {
+            imageId: "room",
+            size: { width: 800, height: 600 },
+            advertisers: [],
+            groups: [{ ns: 2002, id: 1 }],
+            srcPhoto: "https://img.example/room",
+          },
+          {
+            imageId: "pool",
+            size: { width: 800, height: 600 },
+            advertisers: [],
+            groups: [{ ns: 2002, id: 11 }],
+            srcPhoto: "https://img.example/pool",
+          },
+        ]}
+        ns={100}
+        id={102762}
+      >
+        <PhotoCursor imageId="room" />
+      </PhotoGalleryProvider>,
+    );
+
+    expect(html).toContain("Rooms");
+    expect(html).toContain("This photo");
+    expect(html).toContain("All (2)");
+    expect(html).toContain(">Show<");
+  });
 });
