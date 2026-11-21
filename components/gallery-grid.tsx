@@ -351,6 +351,7 @@ export function GalleryGrid({
                   <MuiLink
                     component={Link}
                     href={photoPath(ns, id, image.imageId)}
+                    prefetch={false}
                     scroll={false}
                     aria-label={label}
                     underline="none"
