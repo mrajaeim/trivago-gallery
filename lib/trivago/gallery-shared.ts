@@ -37,6 +37,22 @@ export function galleryImageUrl(urlTail: string, width: number): string | null {
   return `https://imgcy.trivago.com/c_limit,d_dummy.jpeg,f_auto,q_auto,w_${width}${urlTail}`;
 }
 
+export const photoSourceWidths = [640, 960, 1600] as const;
+
+export const photoStageSizes = "(max-width: 600px) 100vw, 56rem";
+
+export function galleryImageSrcSet(urlTail: string): string | null {
+  const parts: string[] = [];
+  for (const width of photoSourceWidths) {
+    const url = galleryImageUrl(urlTail, width);
+    if (!url) {
+      return null;
+    }
+    parts.push(`${url} ${width}w`);
+  }
+  return parts.join(", ");
+}
+
 export function groupTitle(ns: number, id: number): string | null {
   return GROUP_TITLES[`${ns}:${id}`] ?? null;
 }
@@ -71,4 +87,37 @@ export function accommodationPath(ns: number, id: number): string {
 
 export function photoPath(ns: number, id: number, imageId: string): string {
   return `${accommodationPath(ns, id)}/photos/${encodeURIComponent(imageId)}`;
+}
+
+export function imageIdFromPathname(pathname: string | null, fallback: string): string {
+  if (!pathname) {
+    return fallback;
+  }
+  const marker = "/photos/";
+  const at = pathname.lastIndexOf(marker);
+  if (at < 0) {
+    return fallback;
+  }
+  const raw = pathname.slice(at + marker.length).split(/[/?#]/)[0] ?? "";
+  if (!raw) {
+    return fallback;
+  }
+  return decodeImageId(raw) ?? fallback;
+}
+
+export function photoDocumentTitle(ns: string, id: string, imageId: string): string {
+  const decoded = decodeImageId(imageId) ?? imageId;
+  return `Photo ${decoded} · Accommodation ${ns}/${id}`;
+}
+
+export function photoViewerTitle(
+  ns: number,
+  id: number,
+  image: { imageId: string; groups: Array<{ ns: number; id: number }> },
+): string {
+  const titles = groupTitles(image.groups);
+  if (titles.length === 0) {
+    return photoDocumentTitle(String(ns), String(id), image.imageId);
+  }
+  return `${titles.join(", ")} · Accommodation ${ns}/${id}`;
 }

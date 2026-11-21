@@ -10,6 +10,7 @@ export type GalleryImage = {
   size: ImageSize | null;
   advertisers: string[];
   groups: Nsid[];
+  urlTail: string;
   srcTile: string | null;
   srcPhoto: string | null;
 };
@@ -136,6 +137,7 @@ function toGalleryImage(image: DecodedImage): GalleryImage {
     size: image.size,
     advertisers: image.advertisers,
     groups: image.groups,
+    urlTail: image.urlTail,
     srcTile: galleryImageUrl(image.urlTail, 480),
     srcPhoto: galleryImageUrl(image.urlTail, 1600),
   };

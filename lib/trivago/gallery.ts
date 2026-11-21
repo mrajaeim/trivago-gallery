@@ -16,8 +16,9 @@ import {
   accommodationPath as accommodationPathFor,
   decodeImageId,
   galleryImageUrl,
-  groupTitles,
+  photoDocumentTitle,
   photoPath as photoPathFor,
+  photoViewerTitle,
 } from "@/lib/trivago/gallery-shared";
 import {
   interpretAccommodationImageCount,
@@ -33,7 +34,7 @@ import {
 } from "@/lib/trivago/contract";
 import type { Nsid } from "@/lib/trivago/highlights";
 
-export { decodeImageId, galleryImageUrl };
+export { decodeImageId, galleryImageUrl, photoDocumentTitle };
 export type { Nsid };
 export type { GalleryGroupCount } from "@/lib/trivago/gallery-shared";
 export type {
@@ -82,15 +83,6 @@ export function readRouteNsid(ns: string, id: string): Nsid | null {
   return { ns: nsNumber, id: idNumber };
 }
 
-export function photoDocumentTitle(
-  ns: string,
-  id: string,
-  imageId: string,
-): string {
-  const decoded = decodeImageId(imageId) ?? imageId;
-  return `Photo ${decoded} · Accommodation ${ns}/${id}`;
-}
-
 export async function photoPageTitle(
   ns: string,
   id: string,
@@ -109,12 +101,11 @@ export async function photoPageTitle(
   }
 
   const image = result.images.find((item) => item.imageId === decoded);
-  const titles = image ? groupTitles(image.groups) : [];
-  if (titles.length === 0) {
+  if (!image) {
     return fallback;
   }
 
-  return `${titles.join(", ")} · Accommodation ${nsid.ns}/${nsid.id}`;
+  return photoViewerTitle(nsid.ns, nsid.id, image);
 }
 
 export function accommodationPath(nsid: Nsid): string {
