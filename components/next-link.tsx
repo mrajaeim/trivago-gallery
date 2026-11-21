@@ -13,6 +13,7 @@ export function AppLink({
   color,
   variant,
   underline = "always",
+  title,
   sx,
 }: {
   href: string;
@@ -21,6 +22,7 @@ export function AppLink({
   color?: "primary" | "inherit" | "textSecondary";
   variant?: "body1" | "body2";
   underline?: "always" | "hover" | "none";
+  title?: string;
   sx?: SxProps<Theme>;
 }) {
   return (
@@ -31,6 +33,7 @@ export function AppLink({
       color={color}
       variant={variant}
       underline={underline}
+      title={title}
       sx={sx}
     >
       {children}
