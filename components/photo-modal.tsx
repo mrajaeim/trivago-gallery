@@ -9,12 +9,21 @@ import Box from "@mui/material/Box";
 import Dialog from "@mui/material/Dialog";
 import DialogContent from "@mui/material/DialogContent";
 import DialogTitle from "@mui/material/DialogTitle";
+import Divider from "@mui/material/Divider";
 import IconButton from "@mui/material/IconButton";
 import Stack from "@mui/material/Stack";
+import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import { visuallyHidden } from "@mui/utils";
 import { useParams, useRouter } from "next/navigation";
 import { Suspense, useEffect, useRef, useState, type ReactNode } from "react";
+
+const dealGreen = "#008a05";
+
+const toolbarIconSx = {
+  borderRadius: 1.5,
+  "&:hover": { bgcolor: "action.selected" },
+} as const;
 
 function slotIsHidden(node: HTMLElement) {
   let current: HTMLElement | null = node;
@@ -65,6 +74,107 @@ export async function sharePage(href: string) {
   return "failed";
 }
 
+function ToolbarIconButton({
+  label,
+  onClick,
+  disabled,
+  href,
+  highlight,
+  children,
+}: {
+  label: string;
+  onClick?: () => void;
+  disabled?: boolean;
+  href?: string;
+  highlight?: boolean;
+  children: ReactNode;
+}) {
+  const button = href ? (
+    <IconButton
+      component="a"
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label={label}
+      disabled={disabled}
+      sx={{
+        ...toolbarIconSx,
+        ...(highlight ? { color: dealGreen } : null),
+      }}
+    >
+      {children}
+    </IconButton>
+  ) : (
+    <IconButton
+      aria-label={label}
+      onClick={onClick}
+      disabled={disabled}
+      sx={{
+        ...toolbarIconSx,
+        ...(highlight ? { color: dealGreen } : null),
+      }}
+    >
+      {children}
+    </IconButton>
+  );
+
+  return (
+    <Tooltip title={label} enterDelay={500}>
+      <span>{button}</span>
+    </Tooltip>
+  );
+}
+
+function AccommodationDialogHeading() {
+  const [title, setTitle] = useState<string | null>(null);
+
+  useEffect(() => {
+    const sync = () => {
+      const node = document.getElementById("accommodation-title");
+      const next = node?.textContent?.trim() ?? null;
+      setTitle(next && next.length > 0 ? next : null);
+    };
+
+    sync();
+    const node = document.getElementById("accommodation-title");
+    const observer = new MutationObserver(sync);
+    if (node) {
+      observer.observe(node, { childList: true, subtree: true, characterData: true });
+    }
+
+    return () => observer.disconnect();
+  }, []);
+
+  const displayTitle = title ?? "Accommodation";
+
+  return (
+    <Stack spacing={0.25} sx={{ minWidth: 0, flex: 1, pr: 1 }}>
+      <Typography
+        variant="overline"
+        color="text.secondary"
+        sx={{ lineHeight: 1.1, letterSpacing: "0.08em" }}
+      >
+        Hotel gallery
+      </Typography>
+      <Typography
+        id="accommodation-dialog-title"
+        variant="subtitle1"
+        component="p"
+        title={displayTitle}
+        sx={{
+          fontWeight: 700,
+          lineHeight: 1.25,
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
+        }}
+      >
+        {displayTitle}
+      </Typography>
+    </Stack>
+  );
+}
+
 export function PhotoModalToolbar({
   href,
   fullScreen,
@@ -81,40 +191,61 @@ export function PhotoModalToolbar({
   onClose: () => void;
 }) {
   const destinationReady = href !== null;
+  const shareLabel =
+    shareStatus === "copied"
+      ? "Link copied"
+      : shareStatus === "failed"
+        ? "Share failed"
+        : "Share";
+  const fullScreenLabel = fullScreen ? "Exit full screen" : "Full screen";
 
   return (
-    <Stack direction="row" spacing={0.25} sx={{ alignItems: "center" }}>
-      <IconButton
-        aria-label={shareStatus === "copied" ? "Link copied" : "Share"}
-        onClick={onShare}
-        disabled={!destinationReady}
+    <Stack direction="row" spacing={0.75} sx={{ alignItems: "center", flexShrink: 0 }}>
+      <Stack
+        direction="row"
+        spacing={0.25}
+        sx={{
+          alignItems: "center",
+          p: 0.25,
+          borderRadius: 2,
+          border: "1px solid",
+          borderColor: "divider",
+          bgcolor: "action.hover",
+        }}
       >
-        <ShareIcon />
-      </IconButton>
-      <IconButton
-        aria-label={fullScreen ? "Exit full screen" : "Full screen"}
-        onClick={onToggleFullScreen}
-      >
-        {fullScreen ? <FullscreenExitIcon /> : <FullscreenIcon />}
-      </IconButton>
-      {destinationReady ? (
-        <IconButton
-          component="a"
-          href={href}
-          target="_blank"
-          rel="noopener noreferrer"
-          aria-label="Open in new tab"
+        <ToolbarIconButton
+          label={shareLabel}
+          onClick={onShare}
+          disabled={!destinationReady}
+          highlight={shareStatus === "copied"}
         >
-          <OpenInNewIcon />
+          <ShareIcon fontSize="small" />
+        </ToolbarIconButton>
+        <ToolbarIconButton label={fullScreenLabel} onClick={onToggleFullScreen}>
+          {fullScreen ? <FullscreenExitIcon fontSize="small" /> : <FullscreenIcon fontSize="small" />}
+        </ToolbarIconButton>
+        <ToolbarIconButton
+          label="Open in new tab"
+          href={destinationReady ? href : undefined}
+          disabled={!destinationReady}
+        >
+          <OpenInNewIcon fontSize="small" />
+        </ToolbarIconButton>
+      </Stack>
+      <Divider orientation="vertical" flexItem sx={{ height: 32, alignSelf: "center" }} />
+      <Tooltip title="Close" enterDelay={500}>
+        <IconButton
+          aria-label="Close"
+          onClick={onClose}
+          sx={{
+            borderRadius: 1.5,
+            bgcolor: "action.hover",
+            "&:hover": { bgcolor: "error.dark", color: "error.contrastText" },
+          }}
+        >
+          <CloseIcon fontSize="small" />
         </IconButton>
-      ) : (
-        <IconButton aria-label="Open in new tab" disabled>
-          <OpenInNewIcon />
-        </IconButton>
-      )}
-      <IconButton aria-label="Close" onClick={onClose} edge="end">
-        <CloseIcon />
-      </IconButton>
+      </Tooltip>
     </Stack>
   );
 }
@@ -230,18 +361,21 @@ export function PhotoModal({ children }: { children: ReactNode }) {
         }}
       >
         <DialogTitle
+          component="div"
           sx={{
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
-            gap: 1,
-            py: 1,
-            px: 2,
+            gap: { xs: 1, sm: 2 },
+            flexShrink: 0,
+            py: { xs: 1.25, sm: 1.5 },
+            px: { xs: 1.5, sm: 2 },
+            borderBottom: "1px solid",
+            borderColor: "divider",
+            bgcolor: "background.paper",
           }}
         >
-          <Typography id="accommodation-dialog-title" variant="subtitle1" component="p">
-            Accommodation
-          </Typography>
+          <AccommodationDialogHeading />
           <Suspense
             fallback={
               <PhotoModalToolbar
@@ -270,7 +404,19 @@ export function PhotoModal({ children }: { children: ReactNode }) {
               ? "Could not share this page"
               : ""}
         </Box>
-        <DialogContent sx={{ pt: 0, flex: "1 1 auto", overflowY: "auto" }}>
+        <DialogContent
+          data-photos-scroller=""
+          sx={{
+            pt: 0,
+            flex: "1 1 auto",
+            minHeight: 0,
+            overflowY: "auto",
+            scrollBehavior: "smooth",
+            "@media (prefers-reduced-motion: reduce)": {
+              scrollBehavior: "auto",
+            },
+          }}
+        >
           {children}
         </DialogContent>
       </Dialog>
