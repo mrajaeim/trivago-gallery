@@ -40,9 +40,7 @@ async function PhotoGallery({
 
   const images: BrowserPhoto[] = result.images.map((image) => ({
     imageId: image.imageId,
-    width: image.width,
-    height: image.height,
-    hasSize: image.hasSize,
+    size: image.size,
     advertisers: image.advertisers,
     groups: image.groups,
     srcPhoto: image.srcPhoto,

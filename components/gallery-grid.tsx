@@ -12,6 +12,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { CdnImage } from "@/components/cdn-image";
 import {
+  fallbackImageSize,
   groupLabel,
   groupTitles,
   photoPath,
@@ -242,6 +243,7 @@ export function GalleryGrid({
           }}
         >
           {placed.map(({ image, height, span }) => {
+            const frame = image.size ?? fallbackImageSize;
             const source = sourceLine(image.advertisers);
             const position = positionById.get(image.imageId) ?? 0;
             const titles = groupTitles(image.groups);
@@ -285,8 +287,8 @@ export function GalleryGrid({
                   >
                     <CdnImage
                       src={image.src}
-                      width={image.width}
-                      height={image.height}
+                      width={frame.width}
+                      height={frame.height}
                       alt=""
                       sx={{
                         aspectRatio: "auto",

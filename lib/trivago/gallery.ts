@@ -17,6 +17,7 @@ import {
   galleryImageUrl,
   groupTitles,
   photoPath as photoPathFor,
+  type ImageSize,
 } from "@/lib/trivago/gallery-shared";
 
 export { decodeImageId };
@@ -68,8 +69,7 @@ export type GalleryGroupCount = {
 
 export type GalleryImage = {
   imageId: string;
-  width: number;
-  height: number;
+  size: ImageSize | null;
   advertisers: string[];
   groups: Nsid[];
   srcTile: string | null;
@@ -222,11 +222,20 @@ function readGroups(value: unknown): Nsid[] {
   });
 }
 
+function readImageSize(value: Record<string, unknown>): ImageSize | null {
+  const width = readPositiveNumber(value.width);
+  const height = readPositiveNumber(value.height);
+  if (width === null || height === null) {
+    return null;
+  }
+
+  return { width, height };
+}
+
 function readImage(value: unknown): {
   imageId: string;
   urlTail: string;
-  width: number;
-  height: number;
+  size: ImageSize | null;
   advertisers: string[];
   groups: Nsid[];
 } | null {
@@ -240,14 +249,10 @@ function readImage(value: unknown): {
     return null;
   }
 
-  const width = readPositiveNumber(value.width);
-  const height = readPositiveNumber(value.height);
-
   return {
     imageId,
     urlTail,
-    width: width ?? 4,
-    height: height ?? 3,
+    size: readImageSize(value),
     advertisers: readAdvertisers(value.source),
     groups: readGroups(value.tagGroupings),
   };
@@ -424,8 +429,7 @@ async function withSources(
 
   return images.map((image) => ({
     imageId: image.imageId,
-    width: image.width,
-    height: image.height,
+    size: image.size,
     advertisers: image.advertisers,
     groups: image.groups,
     srcTile: usable ? galleryImageUrl(image.urlTail, 480) : null,

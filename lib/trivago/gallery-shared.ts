@@ -4,10 +4,16 @@ export type GalleryGroupCount = {
   imageCount: number;
 };
 
-export type GalleryTile = {
-  imageId: string;
+export type ImageSize = {
   width: number;
   height: number;
+};
+
+export const fallbackImageSize: ImageSize = { width: 4, height: 3 };
+
+export type GalleryTile = {
+  imageId: string;
+  size: ImageSize | null;
   advertisers: string[];
   groups: Array<{ ns: number; id: number }>;
   src: string | null;

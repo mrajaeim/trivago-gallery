@@ -169,8 +169,7 @@ export async function GallerySection({
           <GalleryGrid
           images={imagesResult.images.map((image) => ({
             imageId: image.imageId,
-            width: image.width,
-            height: image.height,
+            size: image.size,
             advertisers: image.advertisers,
             groups: image.groups,
             src: image.srcTile,

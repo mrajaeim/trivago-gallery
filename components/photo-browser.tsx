@@ -16,15 +16,15 @@ import { CdnImage } from "@/components/cdn-image";
 import { AppLink, ButtonLink } from "@/components/next-link";
 import {
   accommodationPath,
+  fallbackImageSize,
   groupTitles,
   photoPath,
+  type ImageSize,
 } from "@/lib/trivago/gallery-shared";
 
 export type BrowserPhoto = {
   imageId: string;
-  width: number;
-  height: number;
-  hasSize: boolean;
+  size: ImageSize | null;
   advertisers: string[];
   groups: Array<{ ns: number; id: number }>;
   srcPhoto: string | null;
@@ -158,6 +158,7 @@ function PhotoStage() {
 
   const previous = images[index - 1];
   const next = images[index + 1];
+  const frame = image.size ?? fallbackImageSize;
   const source = image.advertisers.length > 0 ? image.advertisers.join(", ") : null;
   const titles = groupTitles(image.groups);
   const positionLabel = `Photo ${index + 1} of ${images.length}`;
@@ -175,16 +176,16 @@ function PhotoStage() {
       ) : null}
       <CdnImage
         src={image.srcPhoto}
-        width={image.width}
-        height={image.height}
+        width={frame.width}
+        height={frame.height}
         alt=""
         loading="eager"
         sx={photoFrameSx}
       />
       {source ? <Typography color="text.secondary">{source}</Typography> : null}
-      {image.hasSize ? (
+      {image.size ? (
         <Typography variant="body2" color="text.secondary">
-          {image.width} × {image.height}
+          {image.size.width} × {image.size.height}
         </Typography>
       ) : null}
       <PhotoNav
