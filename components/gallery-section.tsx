@@ -16,6 +16,73 @@ import {
   type GalleryFailure,
 } from "@/lib/trivago/gallery";
 
+function photoCountLabel(count: number): string {
+  return `${count} ${count === 1 ? "photo" : "photos"}`;
+}
+
+function GallerySectionHeader({
+  count,
+  partial,
+  loaded,
+}: {
+  count: number | null;
+  partial?: boolean;
+  loaded?: number;
+}) {
+  return (
+    <Stack component="header" spacing={0.5} sx={{ minWidth: 0 }}>
+      <Stack
+        direction="row"
+        spacing={1}
+        sx={{ alignItems: "center", flexWrap: "wrap", rowGap: 0.5 }}
+      >
+        <Typography
+          id="photos-heading"
+          variant="h5"
+          component="h2"
+          sx={{
+            fontWeight: 800,
+            lineHeight: 1.2,
+            fontSize: { xs: "1.25rem", sm: "1.5rem" },
+            letterSpacing: "-0.02em",
+          }}
+        >
+          Photos
+        </Typography>
+        {count !== null ? (
+          <Box
+            component="span"
+            aria-label={photoCountLabel(count)}
+            sx={{
+              display: "inline-flex",
+              alignItems: "center",
+              minHeight: 24,
+              px: 1,
+              py: 0.2,
+              borderRadius: 999,
+              fontSize: "0.75rem",
+              fontWeight: 700,
+              lineHeight: 1.2,
+              letterSpacing: "0.02em",
+              bgcolor: "action.hover",
+              border: "1px solid",
+              borderColor: "divider",
+              color: "text.secondary",
+            }}
+          >
+            {count}
+          </Box>
+        ) : null}
+      </Stack>
+      {partial && loaded !== undefined && count !== null ? (
+        <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1.35 }}>
+          {loaded} on this page · {photoCountLabel(count)} in the gallery
+        </Typography>
+      ) : null}
+    </Stack>
+  );
+}
+
 function GalleryAlert({ failure }: { failure: GalleryFailure }) {
   const status =
     failure.status === null ? "No HTTP response" : `HTTP ${failure.status}`;
@@ -43,11 +110,9 @@ export function GallerySkeleton() {
   return (
     <Stack spacing={3} id="photos">
       <Stack spacing={1}>
-        <Typography id="photos-heading" variant="h5" component="h2">
-          Photos
-        </Typography>
-        <Typography variant="body2" color="text.secondary">
-          Loading photos
+        <GallerySectionHeader count={null} />
+        <Typography variant="caption" color="text.secondary">
+          Loading gallery
         </Typography>
         <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap" }} aria-hidden="true">
           {["a", "b", "c", "d", "e", "f"].map((key) => (
@@ -109,40 +174,37 @@ export async function GallerySection({
     imagesResult.images.length < totalImageCount;
 
   return (
-    <Stack component="section" spacing={3} id="photos" aria-labelledby="photos-heading">
-      <Stack component="header" spacing={1}>
-        <Typography id="photos-heading" variant="h5" component="h2">
-          Photos
-        </Typography>
-        {imagesResult.ok && totalImageCount !== null ? (
-          <Typography variant="body1" color="text.secondary">
-            {partial
-              ? `${totalImageCount} photos · ${imagesResult.images.length} loaded on this page`
-              : `${totalImageCount} photos`}
+    <Stack component="section" spacing={{ xs: 2, sm: 3 }} id="photos" aria-labelledby="photos-heading" sx={{ minWidth: 0 }}>
+      {imagesResult.ok && totalImageCount !== null ? (
+        <GallerySectionHeader
+          count={totalImageCount}
+          partial={partial}
+          loaded={imagesResult.images.length}
+        />
+      ) : (
+        <GallerySectionHeader count={null} />
+      )}
+      {imagesResult.ok && !countResult.ok ? (
+        <Stack spacing={1}>
+          <Typography variant="body2" color="text.secondary">
+            The photo total could not be loaded.
           </Typography>
-        ) : null}
-        {imagesResult.ok && !countResult.ok ? (
-          <Stack spacing={1}>
-            <Typography variant="body2" color="text.secondary">
-              The photo total could not be loaded.
-            </Typography>
-            <List
-              dense
-              disablePadding
-              sx={{ my: 0, pl: 2.5, color: "text.secondary", listStyleType: "disc" }}
-            >
-              {countResult.messages.map((message) => (
-                <ListItem key={message} disableGutters sx={{ display: "list-item", py: 0 }}>
-                  <ListItemText
-                    primary={message}
-                    slotProps={{ primary: { variant: "body2" } }}
-                  />
-                </ListItem>
-              ))}
-            </List>
-          </Stack>
-        ) : null}
-      </Stack>
+          <List
+            dense
+            disablePadding
+            sx={{ my: 0, pl: 2.5, color: "text.secondary", listStyleType: "disc" }}
+          >
+            {countResult.messages.map((message) => (
+              <ListItem key={message} disableGutters sx={{ display: "list-item", py: 0 }}>
+                <ListItemText
+                  primary={message}
+                  slotProps={{ primary: { variant: "body2" } }}
+                />
+              </ListItem>
+            ))}
+          </List>
+        </Stack>
+      ) : null}
       {!imagesResult.ok && imagesResult.reason === "not-found" ? (
         <Alert severity="info">
           No gallery was returned for this accommodation.
