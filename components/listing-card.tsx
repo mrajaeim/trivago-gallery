@@ -14,6 +14,7 @@ import Typography from "@mui/material/Typography";
 import { visuallyHidden } from "@mui/utils";
 import type { ReactNode } from "react";
 import { Suspense } from "react";
+import { AboutSummary } from "@/components/about-summary";
 import { CdnImage } from "@/components/cdn-image";
 import { CardLink } from "@/components/next-link";
 import { ViewPhotosButton } from "@/components/view-photos-button";
@@ -252,9 +253,7 @@ function ListingDetails({ profile }: { profile: AccommodationProfile }) {
             <Typography variant="subtitle2" component="p">
               About
             </Typography>
-            <Typography variant="body2" color="text.secondary">
-              {profile.summary}
-            </Typography>
+            <AboutSummary text={profile.summary} />
           </Stack>
         ) : null}
         {profile.amenities.length > 0 ? (
