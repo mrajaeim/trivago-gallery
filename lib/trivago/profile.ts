@@ -375,8 +375,9 @@ function readPrice(value: unknown): {
 
   const amount = Number(match[2]);
   const period: StayPeriod = match[4].toLowerCase() === "stay" ? "stay" : "night";
-  const currency = readCurrencyCode(match[1]) ?? readCurrencyCode(match[3]);
-  if (!Number.isFinite(amount) || !currency) {
+  const currency =
+    readCurrencyCode(match[1]) ?? readCurrencyCode(match[3]) ?? "USD";
+  if (!Number.isFinite(amount)) {
     return { price: null, priceText: text };
   }
 

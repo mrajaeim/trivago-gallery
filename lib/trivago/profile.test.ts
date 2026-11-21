@@ -93,11 +93,15 @@ describe("readProfile", () => {
     expect(readProfile(html, nsid)?.amenities).toEqual(["WiFi", "Pool"]);
   });
 
-  it("keeps unstructured price text when the source does not include a currency", () => {
+  it("assumes USD when the source omits an explicit currency", () => {
     const html = page([hotel("Requested Stay", { priceRange: "From 102 per night" })]);
     const profile = readProfile(html, nsid);
 
-    expect(profile?.price).toBeNull();
+    expect(profile?.price).toEqual({
+      amount: 102,
+      currency: "USD",
+      period: "night",
+    });
     expect(profile?.priceText).toBe("From 102 per night");
   });
 
