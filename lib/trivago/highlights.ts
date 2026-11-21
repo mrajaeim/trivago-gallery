@@ -11,6 +11,7 @@ import {
   query,
   registerPersistedQuery,
 } from "@/lib/trivago/apollo";
+import { PERSISTED_QUERY } from "@/lib/trivago/contract";
 import { galleryImageUrl } from "@/lib/trivago/gallery-shared";
 
 // Placeholder selection set. The registered hash is the query trivago runs.
@@ -22,7 +23,7 @@ export const accommodationHighlights = gql`
 
 registerPersistedQuery(
   accommodationHighlights,
-  "4d93d4800f355fb4db2de6239b428ba5ff9896daacfc60a63212b9ab96753ac3",
+  PERSISTED_QUERY.accommodationHighlights,
 );
 
 export type Nsid = {
@@ -230,6 +231,7 @@ function failure(error: unknown): HighlightsResult {
   return { ok: false, status: null, messages: [message] };
 }
 
+// Request-scoped dedupe only. Failures are returned as data, so this is not a cross-request cache.
 const loadAccommodationHighlights = cache(
   async (ns: number, id: number): Promise<HighlightsResult> => {
     const nsid = { ns, id };

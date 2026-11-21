@@ -5,8 +5,7 @@ import {
   type FormattedExecutionResult,
   type GraphQLFormattedError,
 } from "graphql";
-
-const GRAPHQL_ENDPOINT = "https://www.trivago.com/graphql";
+import { GRAPHQL_ENDPOINT, GRAPHQL_HEADERS } from "@/lib/trivago/contract";
 const REQUEST_DEADLINE_MS = 12_000;
 
 const hashesByDocument = new WeakMap<DocumentNode, string>();
@@ -156,17 +155,7 @@ export function createTrivagoLink(
         cache: "no-store",
         credentials: "omit",
         signal,
-        headers: {
-          accept: "application/graphql-response+json, application/json",
-          "content-type": "application/json",
-          "accept-language": "en-US,en;q=0.9",
-          "apollographql-client-name": "hs-web-app",
-          "apollographql-client-version": "02521e02",
-          "x-trv-app-id": "HS_WEB_APP_WARP",
-          "x-trv-currency": "USD",
-          "x-trv-language": "en-US",
-          "x-trv-platform": "us",
-        },
+        headers: GRAPHQL_HEADERS,
         body: JSON.stringify({
           operationName,
           variables: operation.variables,

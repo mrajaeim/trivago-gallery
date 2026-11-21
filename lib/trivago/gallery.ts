@@ -1,5 +1,6 @@
 import { cache } from "react";
 import { gql } from "@apollo/client";
+import { connection } from "next/server";
 import {
   CombinedGraphQLErrors,
   ServerError,
@@ -25,6 +26,11 @@ import {
   type GalleryFailure,
   type GalleryImagesResult,
 } from "@/lib/trivago/gallery-read";
+import {
+  imagesQueryVariables,
+  PERSISTED_QUERY,
+  type ImagesQueryVariables,
+} from "@/lib/trivago/contract";
 import type { Nsid } from "@/lib/trivago/highlights";
 
 export { decodeImageId, galleryImageUrl };
@@ -36,11 +42,6 @@ export type {
   GalleryImage,
   GalleryImagesResult,
 } from "@/lib/trivago/gallery-read";
-
-const IMAGE_COUNT_HASH =
-  "536f8958d182a7c687e71559bbb6cae355055eecc2ea674462ef3ab6153d7e5d";
-const IMAGES_HASH =
-  "3da52f51046422bee84392c53549dc213967f2017ebd16cd52e7346204db6793";
 
 const accommodationImageCount = gql`
   query accommodationImageCount {
@@ -54,30 +55,13 @@ const accommodationImages = gql`
   }
 `;
 
-registerPersistedQuery(accommodationImageCount, IMAGE_COUNT_HASH);
-registerPersistedQuery(accommodationImages, IMAGES_HASH);
+registerPersistedQuery(
+  accommodationImageCount,
+  PERSISTED_QUERY.accommodationImageCount,
+);
+registerPersistedQuery(accommodationImages, PERSISTED_QUERY.accommodationImages);
 
 const IMAGES_PAGINATION = { offset: 0, limit: 150 } as const;
-
-const CONTEXT_AWARE_CONTENT = {
-  rooms: [{ adults: 2, children: [] as number[] }],
-  stayPeriod: {
-    arrival: "2026-12-06",
-    departure: "2026-12-08",
-  },
-  uiv: [
-    { nsid: { ns: 100, id: 102762 } },
-    { nsid: { ns: 200, id: 42362 } },
-  ],
-};
-
-type ImagesVariables = {
-  getAccommodationDetailsInput: { nsids: Nsid[] };
-  imagesPagination: { offset: number; limit: number };
-  includeTags: boolean;
-  includeSize: boolean;
-  contextAwareContent: typeof CONTEXT_AWARE_CONTENT;
-};
 
 type CountVariables = {
   getAccommodationDetailsInput: { nsids: Nsid[] };
@@ -210,19 +194,14 @@ function responseStatus(data: unknown): number | null {
   return data && typeof data === "object" ? persistedDataStatus(data) : null;
 }
 
+// Request-scoped dedupe only. Failures are returned as data, so this is not a cross-request cache.
 const loadAccommodationImages = cache(
-  async (ns: number, id: number): Promise<GalleryImagesResult> => {
+  async (ns: number, id: number, utcDay: string): Promise<GalleryImagesResult> => {
     const nsid = { ns, id };
-    const variables: ImagesVariables = {
-      getAccommodationDetailsInput: { nsids: [nsid] },
-      imagesPagination: IMAGES_PAGINATION,
-      includeTags: true,
-      includeSize: true,
-      contextAwareContent: CONTEXT_AWARE_CONTENT,
-    };
+    const variables = imagesQueryVariables(nsid, new Date(`${utcDay}T00:00:00.000Z`));
 
     try {
-      const result = await query<Record<string, unknown>, ImagesVariables>({
+      const result = await query<Record<string, unknown>, ImagesQueryVariables>({
         query: accommodationImages,
         variables,
         fetchPolicy: "no-cache",
@@ -236,6 +215,7 @@ const loadAccommodationImages = cache(
   },
 );
 
+// Request-scoped dedupe only. Failures are returned as data, so this is not a cross-request cache.
 const loadAccommodationImageCount = cache(
   async (ns: number, id: number): Promise<GalleryCountResult> => {
     const nsid = { ns, id };
@@ -263,8 +243,14 @@ const loadAccommodationImageCount = cache(
   },
 );
 
-export function fetchAccommodationImages(nsid: Nsid): Promise<GalleryImagesResult> {
-  return loadAccommodationImages(nsid.ns, nsid.id);
+export async function fetchAccommodationImages(
+  nsid: Nsid,
+): Promise<GalleryImagesResult> {
+  // The stay window reads the clock. connection() postpones that until a request,
+  // so prerender does not throw on new Date() and does not have to call trivago.
+  await connection();
+  const utcDay = new Date().toISOString().slice(0, 10);
+  return loadAccommodationImages(nsid.ns, nsid.id, utcDay);
 }
 
 export function fetchAccommodationImageCount(
