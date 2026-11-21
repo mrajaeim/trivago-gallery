@@ -10,6 +10,11 @@ import Typography from "@mui/material/Typography";
 import { notFound } from "next/navigation";
 import { GalleryGrid } from "@/components/gallery-grid";
 import {
+  galleryMosaicColumns,
+  galleryMosaicSkeleton,
+  mosaicCellSx,
+} from "@/components/gallery-mosaic";
+import {
   fetchAccommodationImageCount,
   fetchAccommodationImages,
   readRouteNsid,
@@ -125,25 +130,14 @@ export function GallerySkeleton() {
         sx={{
           display: "grid",
           gap: 1.5,
-          gridTemplateColumns: "repeat(6, minmax(0, 1fr))",
+          gridTemplateColumns: galleryMosaicColumns,
         }}
       >
-        {(
-          [
-            ["a", 2, 155],
-            ["b", 2, 155],
-            ["c", 2, 155],
-            ["d", 3, 235],
-            ["e", 3, 235],
-            ["f", 2, 155],
-            ["g", 2, 155],
-            ["h", 2, 155],
-          ] as const
-        ).map(([key, span, height]) => (
+        {galleryMosaicSkeleton.map((tile, index) => (
           <Skeleton
-            key={key}
+            key={`${tile.desktop.span}-${tile.mobile.span}-${index}`}
             variant="rounded"
-            sx={{ gridColumn: `span ${span}`, height }}
+            sx={mosaicCellSx(tile)}
           />
         ))}
       </Box>

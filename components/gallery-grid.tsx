@@ -13,6 +13,12 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { CdnImage } from "@/components/cdn-image";
 import {
+  galleryMosaicColumns,
+  galleryMosaicSkeleton,
+  mosaicCellSx,
+  mosaicTiles,
+} from "@/components/gallery-mosaic";
+import {
   fallbackImageSize,
   groupLabel,
   groupTitles,
@@ -82,42 +88,6 @@ const filterToggleSx = {
   },
 } as const;
 
-const ROW_PATTERN = [
-  { count: 3, height: 155 },
-  { count: 2, height: 235 },
-] as const;
-
-function placeTiles(images: GalleryTile[]) {
-  const placed: Array<{ image: GalleryTile; height: number; span: number }> =
-    [];
-  let index = 0;
-  let pattern = 0;
-
-  while (index < images.length) {
-    const spec = ROW_PATTERN[pattern % ROW_PATTERN.length];
-    const slice = images.slice(index, index + spec.count);
-    const span = 6 / slice.length;
-    for (const image of slice) {
-      placed.push({ image, height: spec.height, span });
-    }
-    index += slice.length;
-    pattern += 1;
-  }
-
-  return placed;
-}
-
-const FILTER_SKELETON = [
-  ["a", 2, 155],
-  ["b", 2, 155],
-  ["c", 2, 155],
-  ["d", 3, 235],
-  ["e", 3, 235],
-  ["f", 2, 155],
-  ["g", 2, 155],
-  ["h", 2, 155],
-] as const;
-
 function FilterGridSkeleton() {
   return (
     <Box
@@ -125,14 +95,14 @@ function FilterGridSkeleton() {
       sx={{
         display: "grid",
         gap: 1.5,
-        gridTemplateColumns: "repeat(6, minmax(0, 1fr))",
+        gridTemplateColumns: galleryMosaicColumns,
       }}
     >
-      {FILTER_SKELETON.map(([key, span, height]) => (
+      {galleryMosaicSkeleton.map((tile, index) => (
         <Skeleton
-          key={key}
+          key={`${tile.desktop.span}-${tile.mobile.span}-${index}`}
           variant="rounded"
-          sx={{ gridColumn: `span ${span}`, height }}
+          sx={mosaicCellSx(tile)}
         />
       ))}
     </Box>
@@ -248,7 +218,10 @@ export function GalleryGrid({
       : images.filter((image) =>
           image.groups.some((group) => groupKey(group) === shown),
         );
-  const placed = placeTiles(visible);
+  const placed = mosaicTiles(visible.length).map((tile, index) => ({
+    image: visible[index],
+    tile,
+  }));
   const positionById = new Map(
     images.map((image, index) => [image.imageId, index + 1]),
   );
@@ -380,13 +353,13 @@ export function GalleryGrid({
           sx={{
             display: "grid",
             gap: 1.5,
-            gridTemplateColumns: "repeat(6, minmax(0, 1fr))",
+            gridTemplateColumns: galleryMosaicColumns,
             listStyle: "none",
             m: 0,
             p: 0,
           }}
         >
-          {placed.map(({ image, height, span }) => {
+          {placed.map(({ image, tile }) => {
             const frame = image.size ?? fallbackImageSize;
             const source = sourceLine(image.advertisers);
             const position = positionById.get(image.imageId) ?? 0;
@@ -397,7 +370,7 @@ export function GalleryGrid({
               <Box
                 component="li"
                 key={image.imageId}
-                sx={{ gridColumn: `span ${span}`, height, minWidth: 0 }}
+                sx={mosaicCellSx(tile)}
               >
                 <Paper
                   variant="outlined"
