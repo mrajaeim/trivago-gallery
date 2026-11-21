@@ -205,6 +205,8 @@ Requests can therefore fail or return incomplete data. The application includes 
 
 The image query currently retrieves up to 150 photos per request, so accommodations with larger galleries may display a partial collection.
 
+On the photo page, Embla handles swipe, arrow keys, and the previous/next controls. Only the current image and its neighbors are downloaded. The address bar updates with the history API, so a swipe does not request the gallery again. Direct visits and refreshes still use the photo route. Thumbnail links do not prefetch every photo.
+
 ### Testing
 
 The project uses Vitest to test important behaviors, including:
