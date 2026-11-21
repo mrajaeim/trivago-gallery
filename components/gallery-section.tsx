@@ -133,7 +133,10 @@ export async function GallerySection({
             >
               {countResult.messages.map((message) => (
                 <ListItem key={message} disableGutters sx={{ display: "list-item", py: 0 }}>
-                  <ListItemText primary={message} primaryTypographyProps={{ variant: "body2" }} />
+                  <ListItemText
+                    primary={message}
+                    slotProps={{ primary: { variant: "body2" } }}
+                  />
                 </ListItem>
               ))}
             </List>
