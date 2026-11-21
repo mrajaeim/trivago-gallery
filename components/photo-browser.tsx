@@ -1,8 +1,9 @@
 "use client";
 
-import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ChevronLeftRoundedIcon from "@mui/icons-material/ChevronLeftRounded";
 import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
+import HomeRoundedIcon from "@mui/icons-material/HomeRounded";
+import ArrowForwardRoundedIcon from "@mui/icons-material/ArrowForwardRounded";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Chip from "@mui/material/Chip";
@@ -15,7 +16,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createContext, useContext, useEffect, type ReactNode } from "react";
 import { CdnImage } from "@/components/cdn-image";
-import { AppLink } from "@/components/next-link";
 import {
   accommodationPath,
   fallbackImageSize,
@@ -43,7 +43,7 @@ const GalleryContext = createContext<GalleryContextValue | null>(null);
 const dealGreen = "#008a05";
 
 const photoStageHeight = {
-  xs: "min(40dvh, 15rem)",
+  xs: "min(46dvh, 17.5rem)",
   sm: "min(62dvh, 28rem)",
 } as const;
 
@@ -71,25 +71,50 @@ const photoFrameSx = {
   mx: "auto",
 } as const;
 
-const navButtonSx = {
-  borderRadius: 2,
-  fontWeight: 700,
-  flex: { xs: 1, sm: "0 1 auto" },
-  minHeight: { xs: 44, sm: 36 },
-  px: { xs: 1, sm: 2 },
-  textTransform: "none",
+const photoNavGroupSx = {
+  display: "flex",
+  width: "100%",
+  maxWidth: { sm: "26rem" },
+  mx: { sm: "auto" },
+  borderRadius: 1.75,
+  border: "1px solid",
   borderColor: "divider",
+  overflow: "hidden",
+  bgcolor: "action.hover",
+} as const;
+
+const navButtonSx = {
+  flex: 1,
+  minWidth: 0,
+  borderRadius: 0,
+  fontWeight: 700,
+  minHeight: { xs: 44, sm: 40 },
+  px: { xs: 0.75, sm: 1.5 },
+  py: { xs: 0.75, sm: 0.65 },
+  textTransform: "none",
   fontSize: { xs: "0.8125rem", sm: "0.875rem" },
+  color: "text.primary",
+  bgcolor: "transparent",
+  boxShadow: "none",
+  "&:not(:last-of-type)": {
+    borderRight: "1px solid",
+    borderColor: "divider",
+  },
   "& .MuiButton-startIcon, & .MuiButton-endIcon": {
     mx: { xs: 0, sm: undefined },
   },
   "&:not(.Mui-disabled)": {
-    borderColor: dealGreen,
-    color: dealGreen,
     "&:hover": {
-      borderColor: "#006e04",
-      bgcolor: "rgba(0, 138, 5, 0.08)",
+      bgcolor: "rgba(0, 138, 5, 0.12)",
+      color: dealGreen,
     },
+    "&:active": {
+      bgcolor: "rgba(0, 138, 5, 0.18)",
+    },
+  },
+  "&.Mui-disabled": {
+    color: "text.disabled",
+    borderColor: "divider",
   },
 } as const;
 
@@ -149,8 +174,9 @@ function PhotoStep({
     label
   );
   const shared = {
-    variant: "outlined" as const,
+    variant: "text" as const,
     size: "small" as const,
+    disableElevation: true,
     startIcon: previous ? icon : undefined,
     endIcon: previous ? undefined : icon,
     sx: navButtonSx,
@@ -179,42 +205,109 @@ function PhotoNav({
   nextHref: string | null;
 }) {
   return (
-    <Stack
-      component="nav"
-      direction="row"
-      aria-label="More photos"
-      spacing={{ xs: 0.75, sm: 1 }}
-      sx={{
-        alignItems: "stretch",
-        justifyContent: { sm: "space-between" },
-        width: "100%",
-      }}
-    >
+    <Box component="nav" aria-label="More photos" sx={photoNavGroupSx}>
       <PhotoStep href={previousHref} direction="previous" label="Previous" shortLabel="Prev" />
       <PhotoStep href={nextHref} direction="next" label="Next" />
-    </Stack>
+    </Box>
   );
 }
 
-function BackToGallery({ ns, id }: { ns: number; id: number }) {
+const photoHeaderActionRowSx = {
+  display: "grid",
+  gridTemplateColumns: { xs: "1fr auto", sm: "auto auto" },
+  gap: 0.75,
+  width: "100%",
+  alignItems: "stretch",
+  justifyContent: { sm: "flex-start" },
+} as const;
+
+const photoHeaderActionBaseSx = {
+  textTransform: "none",
+  fontWeight: 700,
+  minHeight: { xs: 40, sm: 36 },
+  px: { xs: 1.25, sm: 1.75 },
+  borderRadius: 1.75,
+  fontSize: { xs: "0.8125rem", sm: "0.875rem" },
+  whiteSpace: "nowrap",
+} as const;
+
+const photoHeaderSecondarySx = {
+  ...photoHeaderActionBaseSx,
+  minWidth: { xs: 40, sm: "auto" },
+  borderColor: "divider",
+  color: "text.primary",
+  px: { xs: 1, sm: 1.75 },
+  "&:hover": {
+    borderColor: dealGreen,
+    color: dealGreen,
+    bgcolor: "rgba(0, 138, 5, 0.06)",
+  },
+} as const;
+
+const photoHeaderPrimarySx = {
+  ...photoHeaderActionBaseSx,
+  minWidth: 0,
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  bgcolor: dealGreen,
+  color: "#fff",
+  justifyContent: "center",
+  "&:hover": { bgcolor: "#006e04" },
+  "& .MuiButton-endIcon": {
+    marginLeft: { xs: 0.25, sm: 0.5 },
+    marginRight: { xs: -0.25, sm: -0.5 },
+  },
+} as const;
+
+export function PhotoPageActions({ ns, id }: { ns: number; id: number }) {
+  const detailHref = accommodationPath(ns, id);
+
   return (
-    <AppLink
-      href={accommodationPath(ns, id)}
-      underline="none"
-      sx={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 0.5,
-        alignSelf: "flex-start",
-        color: "text.secondary",
-        fontWeight: 600,
-        fontSize: "0.875rem",
-        "&:hover": { color: dealGreen },
-      }}
+    <Box
+      component="nav"
+      aria-label="Accommodation and navigation"
+      sx={photoHeaderActionRowSx}
     >
-      <ArrowBackIcon fontSize="small" />
-      Back to gallery
-    </AppLink>
+      <Button
+        component={Link}
+        href={detailHref}
+        scroll={false}
+        variant="contained"
+        disableElevation
+        size="small"
+        endIcon={<ArrowForwardRoundedIcon sx={{ fontSize: { xs: 15, sm: 18 } }} />}
+        sx={photoHeaderPrimarySx}
+      >
+        <Box component="span" sx={{ display: { xs: "none", lg: "inline" } }}>
+          Show accommodation details
+        </Box>
+        <Box component="span" sx={{ display: { xs: "none", sm: "inline", lg: "none" } }}>
+          Show details
+        </Box>
+        <Box component="span" sx={{ display: { xs: "inline", sm: "none" } }}>
+          Open details
+        </Box>
+      </Button>
+      <Button
+        component={Link}
+        href="/"
+        variant="outlined"
+        size="small"
+        aria-label="Home"
+        startIcon={<HomeRoundedIcon sx={{ fontSize: { xs: 18, sm: 20 } }} />}
+        sx={{
+          ...photoHeaderSecondarySx,
+          justifyContent: "center",
+          "& .MuiButton-startIcon": {
+            margin: { xs: 0, sm: undefined },
+          },
+        }}
+      >
+        <Box component="span" sx={{ display: { xs: "none", sm: "inline" } }}>
+          Home
+        </Box>
+      </Button>
+    </Box>
   );
 }
 
@@ -269,7 +362,6 @@ export function PhotoCursor({ imageId }: { imageId: string }) {
           Photo unavailable
         </Typography>
         <PhotoNav previousHref={null} nextHref={null} />
-        <BackToGallery ns={ns} id={id} />
       </Stack>
     );
   }
@@ -280,12 +372,11 @@ export function PhotoCursor({ imageId }: { imageId: string }) {
   const positionLabel = `Photo ${index + 1} of ${images.length}`;
   const title = titles.length > 0 ? titles.join(", ") : positionLabel;
   const progress = images.length > 0 ? ((index + 1) / images.length) * 100 : 0;
-
   const compactPosition = `${index + 1} / ${images.length}`;
 
   return (
-    <Stack component="article" spacing={{ xs: 1.25, sm: 2.5 }}>
-      <Stack spacing={{ xs: 0.75, sm: 1.25 }}>
+    <Stack component="article" spacing={{ xs: 1, sm: 2.5 }}>
+      <Stack spacing={{ xs: 0.5, sm: 1.25 }}>
         {titles.length > 1 ? (
           <Stack direction="row" useFlexGap spacing={0.5} sx={{ flexWrap: "wrap" }}>
             {titles.map((area) => (
@@ -308,7 +399,14 @@ export function PhotoCursor({ imageId }: { imageId: string }) {
         <Stack
           direction="row"
           spacing={1}
-          sx={{ alignItems: "baseline", justifyContent: "space-between", gap: 1, minWidth: 0 }}
+          sx={{
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 1,
+            minWidth: 0,
+            flexWrap: "wrap",
+            rowGap: 0.25,
+          }}
         >
           <Typography
             variant="h5"
@@ -316,28 +414,36 @@ export function PhotoCursor({ imageId }: { imageId: string }) {
             sx={{
               fontWeight: 800,
               lineHeight: 1.2,
-              fontSize: { xs: "1.125rem", sm: "1.5rem" },
+              fontSize: { xs: "1.0625rem", sm: "1.5rem" },
               minWidth: 0,
-              flex: 1,
+              flex: "1 1 auto",
             }}
           >
             {title}
           </Typography>
-          {titles.length > 0 ? (
-            <Typography
-              variant="caption"
-              color="text.secondary"
-              component="p"
-              sx={{ flexShrink: 0, fontWeight: 700, fontSize: { xs: "0.75rem", sm: "0.8125rem" } }}
-            >
-              <Box component="span" sx={{ display: { xs: "inline", sm: "none" } }}>
-                {compactPosition}
-              </Box>
-              <Box component="span" sx={{ display: { xs: "none", sm: "inline" } }}>
-                {positionLabel}
-              </Box>
-            </Typography>
-          ) : null}
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            component="p"
+            sx={{
+              flexShrink: 0,
+              fontWeight: 700,
+              fontSize: { xs: "0.75rem", sm: "0.8125rem" },
+              px: { xs: 0.75, sm: 1 },
+              py: 0.25,
+              borderRadius: 999,
+              bgcolor: "action.hover",
+              border: "1px solid",
+              borderColor: "divider",
+            }}
+          >
+            <Box component="span" sx={{ display: { xs: "inline", sm: "none" } }}>
+              {compactPosition}
+            </Box>
+            <Box component="span" sx={{ display: { xs: "none", sm: "inline" } }}>
+              {positionLabel}
+            </Box>
+          </Typography>
         </Stack>
         <LinearProgress
           variant="determinate"
@@ -389,19 +495,13 @@ export function PhotoCursor({ imageId }: { imageId: string }) {
         </Stack>
       </Paper>
 
-      <Stack
-        direction="row"
-        sx={{
-          justifyContent: "space-between",
-          alignItems: "center",
-          display: { xs: "none", sm: "flex" },
-        }}
+      <Typography
+        variant="caption"
+        color="text.secondary"
+        sx={{ display: { xs: "none", sm: "block" }, textAlign: "right" }}
       >
-        <BackToGallery ns={ns} id={id} />
-        <Typography variant="caption" color="text.secondary">
-          Arrow keys to browse
-        </Typography>
-      </Stack>
+        Arrow keys to browse
+      </Typography>
     </Stack>
   );
 }
@@ -423,13 +523,6 @@ export function PhotoRouteFallback() {
           <PhotoNav previousHref={null} nextHref={null} />
         </Stack>
       </Paper>
-      <Button
-        disabled
-        startIcon={<ArrowBackIcon fontSize="small" />}
-        sx={{ alignSelf: "flex-start", textTransform: "none" }}
-      >
-        Back to gallery
-      </Button>
     </Stack>
   );
 }

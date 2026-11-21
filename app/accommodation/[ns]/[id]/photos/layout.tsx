@@ -2,16 +2,17 @@ import { Suspense, type ReactNode } from "react";
 import Container from "@mui/material/Container";
 import Stack from "@mui/material/Stack";
 import { notFound } from "next/navigation";
-import { PhotoTrail } from "@/components/page-breadcrumbs";
 import {
   PhotoGalleryProvider,
   PhotoRouteFallback,
   type BrowserPhoto,
 } from "@/components/photo-browser";
+import {
+  PhotoPageHeader,
+  PhotoPageHeaderFallback,
+} from "@/components/photo-page-header";
 import { PhotoGalleryNotice } from "@/components/photo-view";
-import { accommodationLabel } from "@/lib/trivago/accommodation-name";
 import { fetchAccommodationImages, readRouteNsid } from "@/lib/trivago/gallery";
-import { accommodationPath } from "@/lib/trivago/gallery-shared";
 
 const pageSx = {
   flex: 1,
@@ -20,8 +21,8 @@ const pageSx = {
   width: "100%",
   maxWidth: "56rem",
   mx: "auto",
-  px: { xs: 1.25, sm: 3 },
-  py: { xs: 2.5, sm: 8 },
+  px: { xs: 1, sm: 3 },
+  py: { xs: 1.25, sm: 6 },
 } as const;
 
 async function PhotoGallery({
@@ -37,23 +38,10 @@ async function PhotoGallery({
     notFound();
   }
 
-  const [result, label] = await Promise.all([
-    fetchAccommodationImages(nsid),
-    accommodationLabel(nsid),
-  ]);
-  const trail = (
-    <PhotoTrail
-      label={label}
-      href={accommodationPath(nsid.ns, nsid.id)}
-    />
-  );
+  const result = await fetchAccommodationImages(nsid);
 
   if (!result.ok) {
-    return (
-      <PhotoGalleryNotice failure={result} nsid={nsid}>
-        {trail}
-      </PhotoGalleryNotice>
-    );
+    return <PhotoGalleryNotice failure={result} />;
   }
 
   const images: BrowserPhoto[] = result.images.map((image) => ({
@@ -65,12 +53,9 @@ async function PhotoGallery({
   }));
 
   return (
-    <Stack spacing={{ xs: 1, sm: 2 }}>
-      {trail}
-      <PhotoGalleryProvider images={images} ns={nsid.ns} id={nsid.id}>
-        {children}
-      </PhotoGalleryProvider>
-    </Stack>
+    <PhotoGalleryProvider images={images} ns={nsid.ns} id={nsid.id}>
+      {children}
+    </PhotoGalleryProvider>
   );
 }
 
@@ -83,9 +68,14 @@ export default function Layout({
 }) {
   return (
     <Container component="main" maxWidth={false} sx={pageSx}>
-      <Suspense fallback={<PhotoRouteFallback />}>
-        <PhotoGallery params={params}>{children}</PhotoGallery>
-      </Suspense>
+      <Stack spacing={{ xs: 1, sm: 2 }}>
+        <Suspense fallback={<PhotoPageHeaderFallback />}>
+          <PhotoPageHeader params={params} />
+        </Suspense>
+        <Suspense fallback={<PhotoRouteFallback />}>
+          <PhotoGallery params={params}>{children}</PhotoGallery>
+        </Suspense>
+      </Stack>
     </Container>
   );
 }

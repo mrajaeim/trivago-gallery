@@ -1,14 +1,10 @@
-import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import Alert from "@mui/material/Alert";
 import List from "@mui/material/List";
 import ListItem from "@mui/material/ListItem";
 import ListItemText from "@mui/material/ListItemText";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
-import type { ReactNode } from "react";
-import { AppLink } from "@/components/next-link";
-import { accommodationPath } from "@/lib/trivago/gallery-shared";
-import type { GalleryFailure, Nsid } from "@/lib/trivago/gallery";
+import type { GalleryFailure } from "@/lib/trivago/gallery";
 
 function GalleryAlert({ failure }: { failure: GalleryFailure }) {
   const status =
@@ -33,18 +29,9 @@ function GalleryAlert({ failure }: { failure: GalleryFailure }) {
   );
 }
 
-export function PhotoGalleryNotice({
-  failure,
-  nsid,
-  children,
-}: {
-  failure: GalleryFailure;
-  nsid: Nsid;
-  children?: ReactNode;
-}) {
+export function PhotoGalleryNotice({ failure }: { failure: GalleryFailure }) {
   return (
     <Stack spacing={2}>
-      {children}
       {failure.reason === "not-found" ? (
         <Alert severity="info">
           No gallery was returned for this accommodation.
@@ -68,19 +55,6 @@ export function PhotoGalleryNotice({
       ) : (
         <GalleryAlert failure={failure} />
       )}
-      <AppLink
-        href={accommodationPath(nsid.ns, nsid.id)}
-        underline="none"
-        sx={{
-          display: "inline-flex",
-          alignItems: "center",
-          gap: 0.5,
-          alignSelf: "flex-start",
-        }}
-      >
-        <ArrowBackIcon fontSize="small" />
-        Back to accommodation detail
-      </AppLink>
     </Stack>
   );
 }
