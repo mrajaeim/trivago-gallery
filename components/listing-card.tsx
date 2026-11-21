@@ -342,7 +342,35 @@ export function ListingCardSkeleton() {
   return <Skeleton variant="rounded" height={196} sx={{ borderRadius: 3 }} />;
 }
 
-export async function ListingCard({
+async function ListingCardProfile({
+  nsid,
+  linked,
+  expanded,
+  titleComponent,
+}: {
+  nsid: Nsid;
+  linked: boolean;
+  expanded: boolean;
+  titleComponent: "h1" | "h2";
+}) {
+  const profile =
+    (await fetchAccommodationProfile(nsid)) ??
+    emptyAccommodationProfile(accommodationFallbackLabel(nsid));
+
+  return (
+    <>
+      <ListingCardBody
+        profile={profile}
+        nsid={nsid}
+        linked={linked}
+        titleComponent={titleComponent}
+      />
+      {expanded ? <ListingDetails profile={profile} /> : null}
+    </>
+  );
+}
+
+export function ListingCard({
   nsid,
   linkToGallery,
   expanded = false,
@@ -353,19 +381,26 @@ export async function ListingCard({
   expanded?: boolean;
   titleComponent?: "h1" | "h2";
 }) {
-  const profile =
-    (await fetchAccommodationProfile(nsid)) ??
-    emptyAccommodationProfile(accommodationFallbackLabel(nsid));
-
+  const fallback = emptyAccommodationProfile(accommodationFallbackLabel(nsid));
   const body = (
-    <ListingCardBody
-      profile={profile}
-      nsid={nsid}
-      linked={linkToGallery}
-      titleComponent={titleComponent}
-    />
+    <Suspense
+      fallback={
+        <ListingCardBody
+          profile={fallback}
+          nsid={nsid}
+          linked={linkToGallery}
+          titleComponent={titleComponent}
+        />
+      }
+    >
+      <ListingCardProfile
+        nsid={nsid}
+        linked={linkToGallery}
+        expanded={expanded}
+        titleComponent={titleComponent}
+      />
+    </Suspense>
   );
-  const details = expanded ? <ListingDetails profile={profile} /> : null;
 
   return (
     <Card variant="outlined" sx={{ overflow: "hidden", borderRadius: 3 }}>
@@ -374,10 +409,7 @@ export async function ListingCard({
           {body}
         </CardLink>
       ) : (
-        <>
-          {body}
-          {details}
-        </>
+        body
       )}
     </Card>
   );

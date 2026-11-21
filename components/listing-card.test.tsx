@@ -30,12 +30,9 @@ vi.mock("@/lib/trivago/highlights", () => ({
 }));
 
 describe("ListingCard", () => {
-  it("keeps a working gallery link when the profile request fails", async () => {
+  it("keeps a working gallery link when the profile request fails", () => {
     const html = renderToStaticMarkup(
-      await ListingCard({
-        nsid: { ns: 100, id: 102762 },
-        linkToGallery: true,
-      }),
+      <ListingCard nsid={{ ns: 100, id: 102762 }} linkToGallery />,
     );
 
     expect(html).toContain("/accommodation/100/102762");
