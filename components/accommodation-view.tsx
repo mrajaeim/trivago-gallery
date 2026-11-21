@@ -45,7 +45,7 @@ export function AccommodationView({
           <AccommodationCrumbs params={params} />
         </Suspense>
       ) : null}
-      <Suspense fallback={<ListingCardSkeleton />}>
+      <Suspense fallback={<ListingCardSkeleton expanded />}>
         <AccommodationDetail
           params={params}
           hideTitleInChrome={presentation === "modal"}

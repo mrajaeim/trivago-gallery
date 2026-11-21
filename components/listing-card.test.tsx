@@ -34,14 +34,15 @@ vi.mock("@/lib/trivago/highlights", () => ({
 }));
 
 describe("ListingCard", () => {
-  it("keeps a working gallery link when the profile request fails", () => {
+  it("keeps a working gallery link while accommodation details are loading", () => {
     const html = renderToStaticMarkup(
       <ListingCard nsid={{ ns: 100, id: 102762 }} linkToGallery />,
     );
 
     expect(html).toContain("/accommodation/100/102762");
-    expect(html).toContain("100/102762");
-    expect(html).toContain("View details");
+    expect(html).toContain("Loading accommodation");
+    expect(html).not.toContain("Photo unavailable");
+    expect(html).not.toContain("View details");
     expect(html).not.toContain("Live hotel details were not available");
   });
 });

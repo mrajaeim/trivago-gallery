@@ -660,9 +660,9 @@ function ListingCardBody({
   );
 }
 
-export function ListingCardSkeleton() {
+function ListingCardSkeletonBody({ expanded = false }: { expanded?: boolean }) {
   return (
-    <Card variant="outlined" sx={{ overflow: "hidden", borderRadius: { xs: 2, md: 3 } }}>
+    <Box aria-busy="true" aria-label="Loading accommodation">
       <Box
         sx={{
           display: "grid",
@@ -698,6 +698,30 @@ export function ListingCardSkeleton() {
           <Skeleton variant="rounded" height={40} sx={{ width: { xs: 96, md: "100%" } }} />
         </Stack>
       </Box>
+      {expanded ? (
+        <>
+          <Divider />
+          <Stack spacing={1.5} sx={{ px: 2.5, py: 2 }}>
+            <Skeleton variant="text" width={72} height={24} />
+            <Skeleton variant="text" width="100%" />
+            <Skeleton variant="text" width="86%" />
+            <Skeleton variant="text" width={96} height={24} />
+            <Stack direction="row" spacing={1}>
+              <Skeleton variant="rounded" width={88} height={28} />
+              <Skeleton variant="rounded" width={112} height={28} />
+              <Skeleton variant="rounded" width={96} height={28} />
+            </Stack>
+          </Stack>
+        </>
+      ) : null}
+    </Box>
+  );
+}
+
+export function ListingCardSkeleton({ expanded = false }: { expanded?: boolean }) {
+  return (
+    <Card variant="outlined" sx={{ overflow: "hidden", borderRadius: { xs: 2, md: 3 } }}>
+      <ListingCardSkeletonBody expanded={expanded} />
     </Card>
   );
 }
@@ -747,19 +771,8 @@ export function ListingCard({
   titleComponent?: "h1" | "h2";
   hideTitleInChrome?: boolean;
 }) {
-  const fallback = emptyAccommodationProfile(accommodationFallbackLabel(nsid));
   const body = (
-    <Suspense
-      fallback={
-        <ListingCardBody
-          profile={fallback}
-          nsid={nsid}
-          linked={linkToGallery}
-          titleComponent={titleComponent}
-          hideTitleInChrome={hideTitleInChrome}
-        />
-      }
-    >
+    <Suspense fallback={<ListingCardSkeletonBody expanded={expanded} />}>
       <ListingCardProfile
         nsid={nsid}
         linked={linkToGallery}
