@@ -2,11 +2,13 @@
 
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
-import Chip from "@mui/material/Chip";
+import Button from "@mui/material/Button";
 import MuiLink from "@mui/material/Link";
 import Paper from "@mui/material/Paper";
 import Skeleton from "@mui/material/Skeleton";
 import Stack from "@mui/material/Stack";
+import ToggleButton from "@mui/material/ToggleButton";
+import ToggleButtonGroup from "@mui/material/ToggleButtonGroup";
 import Typography from "@mui/material/Typography";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
@@ -27,6 +29,59 @@ function groupKey(group: { ns: number; id: number }) {
 function sourceLine(advertisers: string[]) {
   return advertisers.length > 0 ? advertisers.join(", ") : null;
 }
+
+const dealGreen = "#008a05";
+
+const filterTrackBg = "action.hover";
+
+const filterToggleSx = {
+  gap: 0.5,
+  flexWrap: "nowrap",
+  width: "max-content",
+  p: 0.35,
+  "& .MuiToggleButtonGroup-grouped": {
+    border: "1px solid transparent",
+    borderRadius: "999px !important",
+    flexShrink: 0,
+    mx: 0,
+    my: 0,
+    px: 1.05,
+    py: 0.35,
+    textTransform: "none",
+    fontWeight: 600,
+    fontSize: "0.8125rem",
+    lineHeight: 1.25,
+    color: "text.secondary",
+    transition: "background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease",
+    "&:not(:first-of-type)": {
+      marginLeft: 0,
+      borderLeft: "1px solid transparent",
+    },
+    "&:hover": {
+      bgcolor: "background.paper",
+      color: "text.primary",
+      boxShadow: 1,
+    },
+    "&.Mui-selected": {
+      bgcolor: dealGreen,
+      borderColor: dealGreen,
+      color: "#fff",
+      boxShadow: "0 1px 2px rgba(0, 0, 0, 0.18)",
+      "&:hover": {
+        bgcolor: "#006e04",
+        borderColor: "#006e04",
+      },
+      "& .filter-chip-count": {
+        bgcolor: "rgba(255,255,255,0.24)",
+        color: "#fff",
+      },
+    },
+    "&:focus-visible": {
+      outline: `2px solid ${dealGreen}`,
+      outlineOffset: 1,
+    },
+  },
+} as const;
 
 const ROW_PATTERN = [
   { count: 3, height: 155 },
@@ -85,26 +140,44 @@ function FilterGridSkeleton() {
   );
 }
 
+function FilterChipCount({ count }: { count: number }) {
+  return (
+    <Box
+      component="span"
+      className="filter-chip-count"
+      sx={{
+        ml: 0.45,
+        px: 0.45,
+        py: 0,
+        minWidth: 18,
+        borderRadius: 8,
+        fontSize: "0.6875rem",
+        fontWeight: 700,
+        lineHeight: 1.55,
+        textAlign: "center",
+        bgcolor: "rgba(127, 127, 127, 0.16)",
+        color: "text.secondary",
+      }}
+    >
+      {count}
+    </Box>
+  );
+}
+
 function FilterChip({
   label,
   count,
-  selected,
-  onSelect,
+  value,
 }: {
   label: string;
   count: number;
-  selected: boolean;
-  onSelect: () => void;
+  value: string;
 }) {
   return (
-    <Chip
-      label={`${label} · ${count}`}
-      onClick={onSelect}
-      clickable
-      color={selected ? "primary" : "default"}
-      variant={selected ? "filled" : "outlined"}
-      sx={{ fontWeight: selected ? 600 : 500 }}
-    />
+    <ToggleButton value={value} aria-label={`${label}, ${count} photos`}>
+      {label}
+      <FilterChipCount count={count} />
+    </ToggleButton>
   );
 }
 
@@ -127,6 +200,7 @@ export function GalleryGrid({
   const [shown, setShown] = useState("all");
   const [filtering, setFiltering] = useState(false);
   const filterTimer = useRef<number | null>(null);
+  const filterScrollerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     return () => {
@@ -135,6 +209,23 @@ export function GalleryGrid({
       }
     };
   }, []);
+
+  useEffect(() => {
+    const scroller = filterScrollerRef.current;
+    if (!scroller) {
+      return;
+    }
+    const selected = scroller.querySelector(".MuiToggleButtonGroup-grouped.Mui-selected");
+    if (!(selected instanceof HTMLElement)) {
+      return;
+    }
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    selected.scrollIntoView({
+      behavior: reduceMotion ? "auto" : "smooth",
+      block: "nearest",
+      inline: "nearest",
+    });
+  }, [filter]);
 
   const selectFilter = (value: string) => {
     if (value === filter) {
@@ -179,45 +270,132 @@ export function GalleryGrid({
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}>
-      <Stack spacing={1.25}>
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          gap: { xs: 1, sm: 1.25 },
+          py: 0.75,
+          px: { xs: 1, sm: 1.25 },
+          borderRadius: 2,
+          border: "1px solid",
+          borderColor: "divider",
+          bgcolor: "background.paper",
+        }}
+      >
         <Typography
-          variant="overline"
+          variant="caption"
           color="text.secondary"
-          sx={{ lineHeight: 1.2, letterSpacing: "0.08em" }}
+          sx={{
+            flexShrink: 0,
+            fontWeight: 700,
+            lineHeight: 1.2,
+            letterSpacing: "0.06em",
+            textTransform: "uppercase",
+            display: { xs: "none", sm: "block" },
+          }}
         >
-          Filter by area
+          Area
         </Typography>
+        <Box
+          sx={{
+            position: "relative",
+            flex: 1,
+            minWidth: 0,
+            borderRadius: 1.75,
+            bgcolor: filterTrackBg,
+            border: "1px solid",
+            borderColor: "divider",
+            "&::after": {
+              content: '""',
+              position: "absolute",
+              top: 0,
+              right: 0,
+              bottom: 0,
+              width: 28,
+              pointerEvents: "none",
+              borderRadius: "0 14px 14px 0",
+              background: (theme) =>
+                `linear-gradient(to left, ${theme.palette.action.hover}, transparent)`,
+            },
+          }}
+        >
+          <Box
+            ref={filterScrollerRef}
+            sx={{
+              overflowX: "auto",
+              overflowY: "hidden",
+              WebkitOverflowScrolling: "touch",
+              scrollbarWidth: "none",
+              msOverflowStyle: "none",
+              "&::-webkit-scrollbar": { display: "none" },
+            }}
+          >
+            <ToggleButtonGroup
+              exclusive
+              value={filter}
+              onChange={(_, value) => {
+                if (typeof value === "string" && value.length > 0) {
+                  selectFilter(value);
+                }
+              }}
+              aria-label="Photo groups"
+              sx={filterToggleSx}
+            >
+              <FilterChip label="All" count={totalImageCount} value="all" />
+              {groups.map((group) => {
+                const key = groupKey(group);
+                return (
+                  <FilterChip
+                    key={key}
+                    label={groupLabel(group.ns, group.id)}
+                    count={group.imageCount}
+                    value={key}
+                  />
+                );
+              })}
+            </ToggleButtonGroup>
+          </Box>
+        </Box>
         <Stack
           direction="row"
-          role="group"
-          aria-label="Photo groups"
-          useFlexGap
-          spacing={1}
-          sx={{ flexWrap: "wrap" }}
+          spacing={0.5}
+          sx={{ alignItems: "center", flexShrink: 0, maxWidth: { xs: "38%", sm: "none" } }}
         >
-          <FilterChip
-            label="All"
-            count={totalImageCount}
-            selected={filter === "all"}
-            onSelect={() => selectFilter("all")}
-          />
-          {groups.map((group) => {
-            const key = groupKey(group);
-            return (
-              <FilterChip
-                key={key}
-                label={groupLabel(group.ns, group.id)}
-                count={group.imageCount}
-                selected={filter === key}
-                onSelect={() => selectFilter(key)}
-              />
-            );
-          })}
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            aria-live="polite"
+            noWrap
+            title={summary}
+            sx={{
+              opacity: filtering ? 0.65 : 1,
+              transition: "opacity 0.2s ease",
+            }}
+          >
+            {summary}
+          </Typography>
+          {filter !== "all" ? (
+            <Button
+              size="small"
+              variant="text"
+              onClick={() => selectFilter("all")}
+              sx={{
+                color: dealGreen,
+                fontWeight: 700,
+                fontSize: "0.75rem",
+                textTransform: "none",
+                minWidth: 0,
+                px: 0.5,
+                py: 0.25,
+                lineHeight: 1.2,
+              }}
+            >
+              Clear
+            </Button>
+          ) : null}
         </Stack>
-        <Typography variant="body2" color="text.secondary" aria-live="polite">
-          {summary}
-        </Typography>
-      </Stack>
+      </Box>
       {partial ? (
         <Alert severity="info" variant="outlined" sx={{ py: 0.5 }}>
           This page loaded the first {images.length} of {totalImageCount} photos. Category counts
