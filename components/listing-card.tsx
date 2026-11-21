@@ -7,11 +7,12 @@ import StarBorderIcon from "@mui/icons-material/StarBorder";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Card from "@mui/material/Card";
-import Chip from "@mui/material/Chip";
 import Divider from "@mui/material/Divider";
 import Skeleton from "@mui/material/Skeleton";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
+import { visuallyHidden } from "@mui/utils";
+import type { ReactNode } from "react";
 import { Suspense } from "react";
 import { CdnImage } from "@/components/cdn-image";
 import { CardLink } from "@/components/next-link";
@@ -75,9 +76,9 @@ function Stars({ value }: { value: number }) {
     >
       {Array.from({ length: 5 }, (_, index) =>
         index < value ? (
-          <StarIcon key={index} sx={{ fontSize: 20 }} />
+          <StarIcon key={index} sx={{ fontSize: { xs: 17, md: 20 } }} />
         ) : (
-          <StarBorderIcon key={index} sx={{ fontSize: 20 }} />
+          <StarBorderIcon key={index} sx={{ fontSize: { xs: 17, md: 20 } }} />
         ),
       )}
     </Stack>
@@ -116,16 +117,87 @@ function PricePanel({
   const amount = formattedPrice(profile);
   const period = pricePeriodLabel(profile);
   const buttonSx = {
-    alignSelf: "stretch",
+    alignSelf: { xs: "auto", md: "stretch" },
+    flexShrink: 0,
     bgcolor: dealGreen,
     borderRadius: 2,
     color: "#fff",
     fontWeight: 700,
-    mt: 0.5,
-    py: 1.1,
+    mt: { xs: 0, md: 0.5 },
+    py: { xs: 0.85, md: 1.1 },
+    px: { xs: 1.5, md: 2 },
     textTransform: "none",
+    whiteSpace: "nowrap",
     "&:hover": { bgcolor: "#006e04" },
   } as const;
+
+  const priceBlock = amount ? (
+    profile.price ? (
+      <>
+        <Typography
+          variant="overline"
+          component="p"
+          sx={{
+            color: pricePanelInkMuted,
+            lineHeight: 1,
+            letterSpacing: 0.6,
+            fontSize: { xs: "0.625rem", md: "0.75rem" },
+          }}
+        >
+          From
+        </Typography>
+        <Stack direction="row" spacing={0.75} sx={{ alignItems: "baseline", flexWrap: "wrap" }}>
+          <Typography
+            variant="h4"
+            component="p"
+            sx={{
+              color: pricePanelInk,
+              fontWeight: 800,
+              lineHeight: 1,
+              fontSize: { xs: "1.35rem", md: "2.125rem" },
+            }}
+          >
+            {amount}
+          </Typography>
+          {period ? (
+            <Typography
+              variant="body2"
+              sx={{ color: pricePanelInkMuted, fontSize: { xs: "0.75rem", md: "0.875rem" } }}
+            >
+              {period}
+            </Typography>
+          ) : null}
+        </Stack>
+      </>
+    ) : (
+      <Typography variant="body2" sx={{ color: pricePanelInkMuted, fontSize: { xs: "0.8125rem", md: "0.875rem" } }}>
+        {amount}
+      </Typography>
+    )
+  ) : (
+    <Typography variant="body2" sx={{ color: pricePanelInkMuted }}>
+      Nightly rate unavailable
+    </Typography>
+  );
+
+  const cta = linked ? (
+    <Button
+      component="span"
+      variant="contained"
+      disableElevation
+      endIcon={<ArrowForwardRoundedIcon sx={{ fontSize: { xs: 16, md: 18 } }} />}
+      sx={buttonSx}
+    >
+      <Box component="span" sx={{ display: { xs: "none", sm: "inline" } }}>
+        View details
+      </Box>
+      <Box component="span" sx={{ display: { xs: "inline", sm: "none" } }}>
+        Details
+      </Box>
+    </Button>
+  ) : (
+    <ViewPhotosButton sx={buttonSx} />
+  );
 
   return (
     <Stack
@@ -134,67 +206,34 @@ function PricePanel({
         justifyContent: "center",
         bgcolor: pricePanelBg,
         color: pricePanelInk,
-        px: 2.5,
-        py: 2.25,
+        flexDirection: { xs: "row", md: "column" },
+        alignItems: { xs: "center", md: "stretch" },
+        gap: { xs: 1.25, md: 0 },
+        px: { xs: 1.5, md: 2.5 },
+        py: { xs: 1.15, md: 2.25 },
         minHeight: { md: "100%" },
         borderTop: { xs: "1px solid", md: "none" },
         borderLeft: { md: "1px solid" },
         borderColor: pricePanelBorder,
       }}
     >
-      {amount ? (
-        profile.price ? (
-          <>
-            <Typography
-              variant="overline"
-              component="p"
-              sx={{ color: pricePanelInkMuted, lineHeight: 1.2, letterSpacing: 0.6 }}
-            >
-              From
-            </Typography>
-            <Typography
-              variant="h4"
-              component="p"
-              sx={{ color: pricePanelInk, fontWeight: 800, lineHeight: 1 }}
-            >
-              {amount}
-            </Typography>
-            {period ? (
-              <Typography variant="body2" sx={{ color: pricePanelInkMuted }}>
-                {period}
-              </Typography>
-            ) : null}
-          </>
-        ) : (
-          <Typography variant="body2" sx={{ color: pricePanelInkMuted }}>
-            {amount}
-          </Typography>
-        )
-      ) : (
-        <Typography variant="body2" sx={{ color: pricePanelInkMuted }}>
-          Nightly rate unavailable
-        </Typography>
-      )}
-      <Typography
-        variant="caption"
-        component="p"
-        sx={{ color: pricePanelInkMuted, lineHeight: 1.35, pt: 0.25, pb: 0.25 }}
-      >
-        Compare offers from multiple partners
-      </Typography>
-      {linked ? (
-        <Button
-          component="span"
-          variant="contained"
-          disableElevation
-          endIcon={<ArrowForwardRoundedIcon sx={{ fontSize: 18 }} />}
-          sx={buttonSx}
+      <Stack spacing={0.25} sx={{ flex: { xs: 1, md: "0 1 auto" }, minWidth: 0 }}>
+        {priceBlock}
+      </Stack>
+      <Stack spacing={0.75} sx={{ flexShrink: 0, width: { xs: "auto", md: "100%" } }}>
+        <Typography
+          variant="caption"
+          component="p"
+          sx={{
+            color: pricePanelInkMuted,
+            lineHeight: 1.35,
+            display: { xs: "none", md: "block" },
+          }}
         >
-          View details
-        </Button>
-      ) : (
-        <ViewPhotosButton sx={buttonSx} />
-      )}
+          Compare offers from multiple partners
+        </Typography>
+        {cta}
+      </Stack>
     </Stack>
   );
 }
@@ -219,19 +258,15 @@ function ListingDetails({ profile }: { profile: AccommodationProfile }) {
           </Stack>
         ) : null}
         {profile.amenities.length > 0 ? (
-          <Stack spacing={1}>
+            <Stack spacing={1}>
             <Typography variant="subtitle2" component="p">
               Amenities
             </Typography>
-            <Stack direction="row" useFlexGap spacing={1} sx={{ flexWrap: "wrap" }}>
+            <Stack direction="row" useFlexGap spacing={0.75} sx={{ flexWrap: "wrap" }}>
               {profile.amenities.map((amenity) => (
-                <Chip
-                  key={amenity}
-                  label={amenity}
-                  size="small"
-                  variant="outlined"
-                  sx={{ borderColor: "divider", bgcolor: "action.hover" }}
-                />
+                <MetaPill key={amenity} title={amenity}>
+                  {amenity}
+                </MetaPill>
               ))}
             </Stack>
           </Stack>
@@ -241,62 +276,132 @@ function ListingDetails({ profile }: { profile: AccommodationProfile }) {
   );
 }
 
-const featureChipSx = {
-  maxWidth: "100%",
-  height: "auto",
+const metaPillBaseSx = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 0.5,
+  minHeight: 28,
+  px: 1,
+  py: 0.45,
+  borderRadius: 999,
+  border: "1px solid",
   borderColor: "divider",
   bgcolor: "action.hover",
-  "& .MuiChip-label": { whiteSpace: "normal", lineHeight: 1.35, py: 0.55 },
-  "& .MuiChip-icon": { color: dealGreen },
+  color: "text.secondary",
+  fontSize: { xs: "0.75rem", md: "0.8125rem" },
+  lineHeight: 1.2,
+  minWidth: 0,
+  maxWidth: "100%",
 } as const;
+
+function MetaPill({
+  icon,
+  children,
+  title,
+  sx,
+}: {
+  icon?: ReactNode;
+  children: ReactNode;
+  title?: string;
+  sx?: Record<string, unknown>;
+}) {
+  return (
+    <Box component="span" title={title} sx={{ ...metaPillBaseSx, ...sx }}>
+      {icon ? (
+        <Box component="span" sx={{ display: "inline-flex", flexShrink: 0, lineHeight: 0 }}>
+          {icon}
+        </Box>
+      ) : null}
+      <Box
+        component="span"
+        sx={{
+          minWidth: 0,
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: { xs: "nowrap", md: "normal" },
+        }}
+      >
+        {children}
+      </Box>
+    </Box>
+  );
+}
 
 function FeatureChips({ items }: { items: string[] }) {
   if (items.length === 0) {
     return null;
   }
 
+  const chips = items.map((item) => (
+    <MetaPill
+      key={item}
+      title={item}
+      icon={<AutoAwesomeOutlinedIcon sx={{ fontSize: 14, color: dealGreen }} aria-hidden />}
+      sx={{
+        flexShrink: 0,
+        maxWidth: { xs: "min(72vw, 20rem)", md: "100%" },
+      }}
+    >
+      {item}
+    </MetaPill>
+  ));
+
   return (
-    <Stack direction="row" useFlexGap spacing={0.75} sx={{ flexWrap: "wrap" }}>
-      {items.map((item) => (
-        <Chip
-          key={item}
-          size="small"
-          variant="outlined"
-          icon={<AutoAwesomeOutlinedIcon sx={{ fontSize: "16px !important" }} />}
-          label={item}
-          sx={featureChipSx}
-        />
-      ))}
-    </Stack>
+  <>
+      <Box
+        sx={{
+          display: { xs: "flex", md: "none" },
+          gap: 0.5,
+          mx: -0.25,
+          overflowX: "auto",
+          pb: 0.25,
+          scrollbarWidth: "none",
+          "&::-webkit-scrollbar": { display: "none" },
+        }}
+      >
+        {chips}
+      </Box>
+      <Stack
+        direction="row"
+        useFlexGap
+        spacing={0.75}
+        sx={{ flexWrap: "wrap", display: { xs: "none", md: "flex" } }}
+      >
+        {chips}
+      </Stack>
+    </>
   );
 }
 
 function StayMeta({ checkIn, checkOut }: { checkIn: string; checkOut: string }) {
-  const pillSx = {
-    display: "inline-flex",
-    alignItems: "center",
-    gap: 0.5,
-    fontSize: "0.75rem",
-    lineHeight: 1.35,
-    border: "1px solid",
-    borderColor: "divider",
-    color: "text.secondary",
-    borderRadius: 999,
-    px: 1,
-    py: 0.35,
-  } as const;
+  const timeIcon = <AccessTimeOutlinedIcon sx={{ fontSize: 15 }} aria-hidden />;
+  const compactLabel = `${checkIn} in · ${checkOut} out`;
 
   return (
-    <Stack direction="row" useFlexGap spacing={0.75} sx={{ flexWrap: "wrap", pt: 0.25 }}>
-      <Box component="span" sx={pillSx}>
-        <AccessTimeOutlinedIcon sx={{ fontSize: 16, flexShrink: 0 }} aria-hidden />
-        {`Check-in ${checkIn}`}
-      </Box>
-      <Box component="span" sx={pillSx}>
-        <AccessTimeOutlinedIcon sx={{ fontSize: 16, flexShrink: 0 }} aria-hidden />
-        {`Check-out ${checkOut}`}
-      </Box>
-    </Stack>
+    <>
+      <MetaPill
+        icon={timeIcon}
+        title={compactLabel}
+        sx={{
+          display: { xs: "inline-flex", md: "none" },
+          fontSize: "0.6875rem",
+          px: 0.85,
+          py: 0.4,
+          maxWidth: "100%",
+        }}
+      >
+        {compactLabel}
+      </MetaPill>
+      <Stack
+        direction="row"
+        useFlexGap
+        spacing={0.75}
+        sx={{ flexWrap: "wrap", display: { xs: "none", md: "flex" } }}
+      >
+        <MetaPill icon={timeIcon}>{`Check-in ${checkIn}`}</MetaPill>
+        <MetaPill icon={timeIcon}>{`Check-out ${checkOut}`}</MetaPill>
+      </Stack>
+    </>
   );
 }
 
@@ -332,18 +437,16 @@ function ListingCardBody({
   nsid,
   linked,
   titleComponent,
+  hideTitleInChrome = false,
 }: {
   profile: AccommodationProfile;
   nsid: Nsid;
   linked: boolean;
   titleComponent: "h1" | "h2";
+  hideTitleInChrome?: boolean;
 }) {
   const location = locationLine(profile);
   const color = scoreColor(profile.ratingLabel);
-  const stay =
-    profile.checkIn && profile.checkOut
-      ? `Check-in ${profile.checkIn} · Check-out ${profile.checkOut}`
-      : null;
 
   return (
     <Box
@@ -356,7 +459,8 @@ function ListingCardBody({
         className="listing-card-media"
         sx={{
           position: "relative",
-          minHeight: { xs: 200, md: 180 },
+          minHeight: { xs: 148, md: 180 },
+          maxHeight: { xs: 148, md: "none" },
           bgcolor: "action.hover",
           overflow: "hidden",
         }}
@@ -370,7 +474,7 @@ function ListingCardBody({
             display: "block",
             width: "100%",
             height: "100%",
-            minHeight: { xs: 200, md: 180 },
+            minHeight: { xs: 148, md: 180 },
             objectFit: "cover",
             borderRadius: 0,
             transition: "transform 0.35s ease",
@@ -390,14 +494,14 @@ function ListingCardBody({
           <Box
             sx={{
               position: "absolute",
-              top: 10,
-              left: 10,
+              top: { xs: 8, md: 10 },
+              left: { xs: 8, md: 10 },
               bgcolor: "rgba(0,0,0,0.72)",
               color: "#fff",
-              fontSize: "0.75rem",
+              fontSize: { xs: "0.6875rem", md: "0.75rem" },
               fontWeight: 700,
-              px: 1,
-              py: 0.4,
+              px: { xs: 0.65, md: 1 },
+              py: { xs: 0.25, md: 0.4 },
               borderRadius: 1,
               backdropFilter: "blur(6px)",
               letterSpacing: 0.2,
@@ -408,10 +512,10 @@ function ListingCardBody({
         ) : null}
       </Box>
       <Stack
-        spacing={1.5}
+        spacing={{ xs: 1.1, md: 1.45 }}
         sx={{
-          px: 2.5,
-          py: 2.25,
+          px: { xs: 1.5, md: 2.5 },
+          py: { xs: 1.35, md: 2.25 },
           justifyContent: "center",
           minWidth: 0,
           bgcolor: { md: "background.paper" },
@@ -423,12 +527,17 @@ function ListingCardBody({
           component={titleComponent}
           className="listing-card-title"
           sx={{
+            ...(hideTitleInChrome ? visuallyHidden : null),
             fontWeight: 800,
-            lineHeight: 1.25,
-            display: "-webkit-box",
-            WebkitLineClamp: 2,
-            WebkitBoxOrient: "vertical",
-            overflow: "hidden",
+            lineHeight: 1.2,
+            fontSize: {
+              xs: titleComponent === "h1" ? "1.125rem" : "1rem",
+              md: titleComponent === "h1" ? "1.5rem" : "1.25rem",
+            },
+            display: hideTitleInChrome ? "block" : "-webkit-box",
+            WebkitLineClamp: hideTitleInChrome ? undefined : 2,
+            WebkitBoxOrient: hideTitleInChrome ? undefined : "vertical",
+            overflow: hideTitleInChrome ? "clip" : "hidden",
             transition: "color 0.2s ease",
           }}
         >
@@ -437,51 +546,65 @@ function ListingCardBody({
         <Stack
           direction="row"
           useFlexGap
-          spacing={1.25}
-          sx={{ alignItems: "center", flexWrap: "wrap", rowGap: 1 }}
+          spacing={{ xs: 0.75, md: 1.25 }}
+          sx={{ alignItems: "center", flexWrap: "wrap", rowGap: 0.65 }}
         >
-          {profile.stars !== null ? <Stars value={profile.stars} /> : null}
+          {profile.stars !== null ? (
+            <Box sx={{ display: "inline-flex", alignItems: "center", lineHeight: 0 }}>
+              <Stars value={profile.stars} />
+            </Box>
+          ) : null}
           {profile.stars !== null && profile.ratingValue !== null ? (
             <Box
               component="span"
               aria-hidden
-              sx={{ width: "1px", height: 20, bgcolor: "divider", flexShrink: 0 }}
+              sx={{ width: "1px", height: 18, bgcolor: "divider", flexShrink: 0, alignSelf: "center" }}
             />
           ) : null}
           {profile.ratingValue !== null ? (
             <Stack
               direction="row"
-              spacing={1}
+              spacing={{ xs: 0.65, md: 1 }}
               sx={{
                 alignItems: "center",
-                px: 1,
+                px: { xs: 0.65, md: 1 },
                 py: 0.35,
                 borderRadius: 1.5,
                 border: "1px solid",
                 borderColor: "divider",
                 bgcolor: "action.hover",
+                minHeight: 28,
               }}
             >
               <Box
                 component="span"
                 sx={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
                   bgcolor: color,
                   color: "#fff",
-                  fontSize: "0.875rem",
+                  fontSize: { xs: "0.75rem", md: "0.875rem" },
                   fontWeight: 800,
                   borderRadius: 1,
-                  px: 0.85,
-                  py: 0.35,
-                  minWidth: 36,
-                  textAlign: "center",
-                  lineHeight: 1.3,
+                  px: { xs: 0.55, md: 0.85 },
+                  py: 0.25,
+                  minWidth: { xs: 30, md: 36 },
+                  lineHeight: 1.2,
                 }}
               >
                 {formatScore(profile.ratingValue)}
               </Box>
-              <Typography variant="body2" component="span">
+              <Typography
+                variant="body2"
+                component="span"
+                sx={{ fontSize: { xs: "0.75rem", md: "0.875rem" } }}
+              >
                 {profile.ratingLabel ? (
-                  <Box component="strong" sx={{ color, fontWeight: 700 }}>
+                  <Box
+                    component="strong"
+                    sx={{ color, fontWeight: 700, display: { xs: "none", sm: "inline" } }}
+                  >
                     {profile.ratingLabel}{" "}
                   </Box>
                 ) : null}
@@ -495,16 +618,29 @@ function ListingCardBody({
           ) : null}
         </Stack>
         {location ? (
-          <Stack direction="row" spacing={1} sx={{ alignItems: "flex-start" }}>
+          <Stack
+            direction="row"
+            spacing={0.75}
+            sx={{ alignItems: { xs: "center", md: "flex-start" }, minWidth: 0 }}
+          >
             <PlaceOutlinedIcon
-              sx={{ fontSize: 20, mt: 0.1, color: "text.secondary", flexShrink: 0 }}
+              sx={{
+                fontSize: 18,
+                color: "text.secondary",
+                flexShrink: 0,
+                mt: { md: 0.15 },
+              }}
             />
             <Typography
               variant="body2"
               color="text.secondary"
+              title={location}
               sx={{
+                fontSize: { xs: "0.8125rem", md: "0.875rem" },
+                lineHeight: 1.35,
+                minWidth: 0,
                 display: "-webkit-box",
-                WebkitLineClamp: 2,
+                WebkitLineClamp: { xs: 1, md: 2 },
                 WebkitBoxOrient: "vertical",
                 overflow: "hidden",
               }}
@@ -513,14 +649,12 @@ function ListingCardBody({
             </Typography>
           </Stack>
         ) : null}
-        <FeatureSummary nsid={nsid} amenities={profile.amenities} />
-        {profile.checkIn && profile.checkOut ? (
-          <StayMeta checkIn={profile.checkIn} checkOut={profile.checkOut} />
-        ) : stay ? (
-          <Typography variant="caption" color="text.secondary" sx={{ pt: 0.25 }}>
-            {stay}
-          </Typography>
-        ) : null}
+        <Stack spacing={0.75} sx={{ minWidth: 0 }}>
+          <FeatureSummary nsid={nsid} amenities={profile.amenities} />
+          {profile.checkIn && profile.checkOut ? (
+            <StayMeta checkIn={profile.checkIn} checkOut={profile.checkOut} />
+          ) : null}
+        </Stack>
       </Stack>
       <PricePanel profile={profile} linked={linked} />
     </Box>
@@ -529,7 +663,7 @@ function ListingCardBody({
 
 export function ListingCardSkeleton() {
   return (
-    <Card variant="outlined" sx={{ overflow: "hidden", borderRadius: 3 }}>
+    <Card variant="outlined" sx={{ overflow: "hidden", borderRadius: { xs: 2, md: 3 } }}>
       <Box
         sx={{
           display: "grid",
@@ -539,9 +673,9 @@ export function ListingCardSkeleton() {
         <Skeleton
           variant="rectangular"
           animation="wave"
-          sx={{ minHeight: { xs: 200, md: 180 }, borderRadius: 0 }}
+          sx={{ minHeight: { xs: 148, md: 180 }, borderRadius: 0 }}
         />
-        <Stack spacing={1.25} sx={{ px: 2.5, py: 2.25 }}>
+        <Stack spacing={1.25} sx={{ px: { xs: 1.5, md: 2.5 }, py: { xs: 1.35, md: 2.25 } }}>
           <Skeleton variant="text" width="92%" height={32} />
           <Skeleton variant="text" width="58%" height={28} />
           <Skeleton variant="text" width="78%" height={22} />
@@ -551,10 +685,18 @@ export function ListingCardSkeleton() {
             <Skeleton variant="rounded" width={140} height={28} />
           </Stack>
         </Stack>
-        <Stack spacing={1.25} sx={{ px: 2.5, py: 2.25, bgcolor: pricePanelBg }}>
-          <Skeleton variant="text" width="45%" />
-          <Skeleton variant="text" width="70%" height={40} />
-          <Skeleton variant="rounded" height={40} />
+        <Stack
+          direction={{ xs: "row", md: "column" }}
+          spacing={1.25}
+          sx={{
+            alignItems: { xs: "center", md: "stretch" },
+            px: { xs: 1.5, md: 2.5 },
+            py: { xs: 1.15, md: 2.25 },
+            bgcolor: pricePanelBg,
+          }}
+        >
+          <Skeleton variant="text" width="45%" sx={{ flex: { xs: 1, md: "none" } }} />
+          <Skeleton variant="rounded" height={40} sx={{ width: { xs: 96, md: "100%" } }} />
         </Stack>
       </Box>
     </Card>
@@ -566,11 +708,13 @@ async function ListingCardProfile({
   linked,
   expanded,
   titleComponent,
+  hideTitleInChrome,
 }: {
   nsid: Nsid;
   linked: boolean;
   expanded: boolean;
   titleComponent: "h1" | "h2";
+  hideTitleInChrome?: boolean;
 }) {
   const profile =
     (await fetchAccommodationProfile(nsid)) ??
@@ -583,6 +727,7 @@ async function ListingCardProfile({
         nsid={nsid}
         linked={linked}
         titleComponent={titleComponent}
+        hideTitleInChrome={hideTitleInChrome}
       />
       {expanded ? <ListingDetails profile={profile} /> : null}
     </>
@@ -594,11 +739,13 @@ export function ListingCard({
   linkToGallery,
   expanded = false,
   titleComponent = "h2",
+  hideTitleInChrome = false,
 }: {
   nsid: Nsid;
   linkToGallery: boolean;
   expanded?: boolean;
   titleComponent?: "h1" | "h2";
+  hideTitleInChrome?: boolean;
 }) {
   const fallback = emptyAccommodationProfile(accommodationFallbackLabel(nsid));
   const body = (
@@ -609,6 +756,7 @@ export function ListingCard({
           nsid={nsid}
           linked={linkToGallery}
           titleComponent={titleComponent}
+          hideTitleInChrome={hideTitleInChrome}
         />
       }
     >
@@ -617,6 +765,7 @@ export function ListingCard({
         linked={linkToGallery}
         expanded={expanded}
         titleComponent={titleComponent}
+        hideTitleInChrome={hideTitleInChrome}
       />
     </Suspense>
   );
