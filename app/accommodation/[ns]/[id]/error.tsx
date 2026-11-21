@@ -7,13 +7,16 @@ import Typography from "@mui/material/Typography";
 import { useEffect } from "react";
 import { PageBreadcrumbs } from "@/components/page-breadcrumbs";
 
-export default function Error({
-  error,
-  retry,
-}: {
+type AccommodationErrorProps = {
   error: unknown;
+  reset: () => void;
   retry: () => void;
-}) {
+};
+
+// Next.js 16 passes both. retry() refreshes the server render and then clears
+// this boundary. reset() only clears it, so a failed fetch would render again
+// from the same failed payload.
+export default function Error({ error, retry }: AccommodationErrorProps) {
   useEffect(() => {
     console.error(error);
   }, [error]);
