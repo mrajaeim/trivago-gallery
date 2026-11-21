@@ -1,5 +1,19 @@
-import Link from "next/link";
+import ChevronRightIcon from "@mui/icons-material/ChevronRight";
+import Alert from "@mui/material/Alert";
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import Card from "@mui/material/Card";
+import CardActions from "@mui/material/CardActions";
+import CardContent from "@mui/material/CardContent";
+import Chip from "@mui/material/Chip";
+import List from "@mui/material/List";
+import ListItem from "@mui/material/ListItem";
+import ListItemText from "@mui/material/ListItemText";
+import Skeleton from "@mui/material/Skeleton";
+import Stack from "@mui/material/Stack";
+import Typography from "@mui/material/Typography";
 import { CdnImage } from "@/components/cdn-image";
+import { AppLink, CardLink } from "@/components/next-link";
 import { accommodationPath } from "@/lib/trivago/gallery-shared";
 import {
   fetchAccommodationHighlights,
@@ -17,110 +31,231 @@ function sentimentLabel(sentiment: HighlightView["sentiment"]) {
   return "Neutral";
 }
 
-function sentimentClass(sentiment: HighlightView["sentiment"]) {
+function sentimentColor(
+  sentiment: HighlightView["sentiment"],
+): "success" | "warning" | "default" {
   if (sentiment === "POSITIVE") {
-    return "bg-emerald-50 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200";
+    return "success";
   }
   if (sentiment === "NEGATIVE") {
-    return "bg-amber-50 text-amber-900 dark:bg-amber-950 dark:text-amber-200";
+    return "warning";
   }
-  return "bg-zinc-100 text-zinc-700 dark:bg-zinc-900 dark:text-zinc-300";
+  return "default";
 }
 
 function HighlightCard({
   highlight,
   nsid,
+  linkToGallery,
 }: {
   highlight: HighlightView;
   nsid: Nsid;
+  linkToGallery: boolean;
+}) {
+  const content = (
+  <>
+      <CardContent>
+        <Stack spacing={1.5}>
+          <Stack
+            direction="row"
+            spacing={2}
+            sx={{ alignItems: "flex-start", justifyContent: "space-between" }}
+          >
+            <Typography variant="h6" component="h2">
+              {highlight.title}
+            </Typography>
+            <Chip
+              label={sentimentLabel(highlight.sentiment)}
+              color={sentimentColor(highlight.sentiment)}
+              size="small"
+              sx={{ flexShrink: 0 }}
+            />
+          </Stack>
+          {highlight.imageSrc ? (
+            <CdnImage
+              src={highlight.imageSrc}
+              width={16}
+              height={10}
+              alt=""
+              sx={{ borderRadius: 2, objectFit: "cover" }}
+            />
+          ) : null}
+          <Typography color="text.secondary">{highlight.description}</Typography>
+        </Stack>
+      </CardContent>
+      {linkToGallery ? (
+        <CardActions sx={{ px: 2, pb: 2, pt: 0 }}>
+          <Button
+            component="span"
+            size="small"
+            variant="outlined"
+            endIcon={<ChevronRightIcon />}
+            sx={{ pointerEvents: "none" }}
+          >
+            View photos
+          </Button>
+        </CardActions>
+      ) : null}
+    </>
+  );
+
+  if (!linkToGallery) {
+    return (
+      <Card variant="outlined">
+        <Box sx={{ opacity: 0.98 }}>{content}</Box>
+      </Card>
+    );
+  }
+
+  return (
+    <Card variant="outlined" sx={{ "&:hover": { boxShadow: 1 } }}>
+      <CardLink href={accommodationPath(nsid.ns, nsid.id)} scroll={false}>
+        {content}
+      </CardLink>
+    </Card>
+  );
+}
+
+export function HighlightsSectionHeader({
+  context,
+  displayName,
+}: {
+  context: "home" | "accommodation";
+  displayName: string;
 }) {
   return (
-    <Link
-      href={accommodationPath(nsid.ns, nsid.id)}
-      scroll={false}
-      className="flex flex-col gap-3 rounded-2xl border border-black/8 bg-white p-5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black dark:border-white/12 dark:bg-zinc-950 dark:focus-visible:outline-white"
-    >
-      <div className="flex items-start justify-between gap-4">
-        <h2 className="text-lg font-semibold tracking-tight text-black dark:text-zinc-50">
-          {highlight.title}
-        </h2>
-        <span
-          className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${sentimentClass(highlight.sentiment)}`}
-        >
-          {sentimentLabel(highlight.sentiment)}
-        </span>
-      </div>
-      {highlight.imageSrc ? (
-        <CdnImage
-          src={highlight.imageSrc}
-          width={16}
-          height={10}
-          alt=""
-          className="h-auto w-full rounded-xl object-cover"
+    <Stack component="header" spacing={1.5}>
+      <Stack spacing={1}>
+        <Typography id="accommodation-intro" variant="h5" component="h2">
+          Accommodation
+        </Typography>
+        <Chip
+          label={displayName}
+          size="small"
+          variant="outlined"
+          sx={{ alignSelf: "flex-start", fontWeight: 500, maxWidth: "100%" }}
         />
-      ) : null}
-      <p className="text-base leading-7 text-zinc-600 dark:text-zinc-400">
-        {highlight.description}
-      </p>
-      <p className="text-sm font-medium text-black dark:text-zinc-50">Photos</p>
-    </Link>
+      </Stack>
+      {context === "home" ? (
+        <Typography variant="body2" color="text.secondary" sx={{ maxWidth: "36rem" }}>
+          Open a card to view its photos in a dialog while Home stays underneath.
+        </Typography>
+      ) : (
+        <Stack spacing={1}>
+          <Typography variant="body2" color="text.secondary">
+            Same linked cards as on <AppLink href="/">Home</AppLink>; each opens this
+            accommodation&apos;s gallery.
+          </Typography>
+          <Typography variant="caption" color="text.secondary">
+            Descriptions are AI-generated and not independently verified.
+          </Typography>
+        </Stack>
+      )}
+    </Stack>
+  );
+}
+
+export function HighlightsSectionHeaderSkeleton({
+  context,
+}: {
+  context: "home" | "accommodation";
+}) {
+  return (
+    <Stack spacing={1.5} aria-hidden="true">
+      <Skeleton variant="text" width={140} height={36} />
+      <Skeleton variant="rounded" width="min(100%, 20rem)" height={28} />
+      <Skeleton variant="text" width="min(100%, 28rem)" />
+      {context === "accommodation" ? <Skeleton variant="text" width={200} /> : null}
+    </Stack>
   );
 }
 
 export function HighlightsSkeleton() {
   return (
-    <div className="flex flex-col gap-4" aria-hidden="true">
+    <Stack spacing={2} aria-hidden="true">
       {["one", "two", "three"].map((key) => (
-        <div
-          key={key}
-          className="h-32 animate-pulse rounded-2xl bg-zinc-200 dark:bg-zinc-900"
-        />
+        <Skeleton key={key} variant="rounded" height={128} />
       ))}
-    </div>
+    </Stack>
   );
 }
 
-export async function HighlightsSection({ nsid }: { nsid: Nsid }) {
+export function AccommodationHighlightsFallback() {
+  return (
+    <Stack spacing={2.5} aria-hidden="true">
+      <HighlightsSectionHeaderSkeleton context="accommodation" />
+      <HighlightsSkeleton />
+    </Stack>
+  );
+}
+
+function FailureAlert({
+  title,
+  status,
+  messages,
+}: {
+  title: string;
+  status: number | null;
+  messages: string[];
+}) {
+  const statusLabel = status === null ? "No HTTP response" : `HTTP ${status}`;
+
+  return (
+    <Alert severity="error">
+      <Typography component="h2" variant="h6">
+        {title}
+      </Typography>
+      <Typography>
+        This was a live request to trivago with no session cookies. {statusLabel}.
+      </Typography>
+      <List dense disablePadding sx={{ my: 1, listStyleType: "disc", pl: 2.5 }}>
+        {messages.map((message) => (
+          <ListItem key={message} disableGutters sx={{ display: "list-item", py: 0 }}>
+            <ListItemText primary={message} />
+          </ListItem>
+        ))}
+      </List>
+    </Alert>
+  );
+}
+
+export async function HighlightsSection({
+  nsid,
+  linkToGallery = true,
+}: {
+  nsid: Nsid;
+  linkToGallery?: boolean;
+}) {
   const result = await fetchAccommodationHighlights(nsid);
 
   if (!result.ok) {
-    const status =
-      result.status === null ? "No HTTP response" : `HTTP ${result.status}`;
-
     return (
-      <div
-        role="alert"
-        className="flex flex-col gap-3 rounded-2xl border border-red-200 bg-red-50 p-5 text-red-950 dark:border-red-900 dark:bg-red-950 dark:text-red-100"
-      >
-        <h2 className="text-lg font-semibold">Highlights request failed</h2>
-        <p>
-          This was a live request to trivago with no session cookies. {status}.
-        </p>
-        <ul className="list-disc pl-5">
-          {result.messages.map((message) => (
-            <li key={message}>{message}</li>
-          ))}
-        </ul>
-      </div>
+      <FailureAlert
+        title="Accommodation request failed"
+        status={result.status}
+        messages={result.messages}
+      />
     );
   }
 
   if (result.highlights.length === 0) {
     return (
-      <p className="rounded-2xl border border-black/8 bg-white p-5 text-zinc-600 dark:border-white/12 dark:bg-zinc-950 dark:text-zinc-400">
-        No highlights were returned for this accommodation.
-      </p>
+      <Alert severity="info">
+        No accommodation details were returned for this property.
+      </Alert>
     );
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <p className="text-sm text-zinc-500 dark:text-zinc-400">
-        Live request succeeded. {result.highlights.length} highlights.
-      </p>
+    <Stack spacing={2}>
       {result.highlights.map((highlight) => (
-        <HighlightCard key={highlight.id} highlight={highlight} nsid={nsid} />
+        <HighlightCard
+          key={highlight.id}
+          highlight={highlight}
+          nsid={nsid}
+          linkToGallery={linkToGallery}
+        />
       ))}
-    </div>
+    </Stack>
   );
 }

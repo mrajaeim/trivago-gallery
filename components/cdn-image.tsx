@@ -1,48 +1,74 @@
 "use client";
 
+import Box from "@mui/material/Box";
+import Typography from "@mui/material/Typography";
+import type { SxProps, Theme } from "@mui/material/styles";
 import { useState } from "react";
+
+function withSx(base: SxProps<Theme>, sx?: SxProps<Theme>): SxProps<Theme> {
+  const extra = sx === undefined ? [] : Array.isArray(sx) ? sx : [sx];
+  return [base, ...extra];
+}
 
 export function CdnImage({
   src,
   width,
   height,
   alt,
-  className,
   loading = "lazy",
+  sx,
 }: {
   src: string | null;
   width: number;
   height: number;
   alt: string;
-  className?: string;
   loading?: "lazy" | "eager";
+  sx?: SxProps<Theme>;
 }) {
-  const [failed, setFailed] = useState(false);
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
+  const failed = src !== null && failedSrc === src;
   const aspectRatio = `${width} / ${height}`;
 
   if (!src || failed) {
     return (
-      <div
+      <Box
         role="img"
         aria-label={alt || "Photo unavailable"}
-        className={`flex items-center justify-center bg-zinc-200 text-sm text-zinc-600 dark:bg-zinc-900 dark:text-zinc-400 ${className ?? ""}`}
-        style={{ aspectRatio }}
+        sx={withSx(
+          {
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            bgcolor: "action.hover",
+            color: "text.secondary",
+            aspectRatio,
+          },
+          sx,
+        )}
       >
-        Photo unavailable
-      </div>
+        <Typography variant="body2">Photo unavailable</Typography>
+      </Box>
     );
   }
 
   return (
-    <img
+    <Box
+      component="img"
       src={src}
       alt={alt}
       width={width}
       height={height}
       loading={loading}
-      className={className}
-      style={{ aspectRatio }}
-      onError={() => setFailed(true)}
+      onError={() => setFailedSrc(src)}
+      sx={withSx(
+        {
+          aspectRatio,
+          display: "block",
+          height: "auto",
+          width: "100%",
+        },
+        sx,
+      )}
     />
   );
 }

@@ -1,30 +1,44 @@
 import { Suspense } from "react";
-import {
-  HighlightsSection,
-  HighlightsSkeleton,
-} from "@/components/highlights-section";
+import Container from "@mui/material/Container";
+import Stack from "@mui/material/Stack";
+import Typography from "@mui/material/Typography";
+import { HomeAccommodationIntro } from "@/components/home-accommodation-intro";
+import { HighlightsSection, HighlightsSkeleton } from "@/components/highlights-section";
 import { SAMPLE_ACCOMMODATION } from "@/lib/trivago/highlights";
+
+const pageSx = {
+  flex: 1,
+  display: "flex",
+  flexDirection: "column",
+  gap: 4,
+  width: "100%",
+  maxWidth: "48rem",
+  mx: "auto",
+  px: 3,
+  py: 8,
+} as const;
 
 export default function Home() {
   return (
-    <div className="flex flex-1 flex-col bg-zinc-50 font-sans dark:bg-black">
-      <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-8 px-6 py-16">
-        <header className="flex flex-col gap-3">
-          <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">
-            Accommodation {SAMPLE_ACCOMMODATION.ns}/{SAMPLE_ACCOMMODATION.id}
-          </p>
-          <h1 className="text-3xl font-semibold tracking-tight text-black dark:text-zinc-50">
-            Highlights
-          </h1>
-          <p className="max-w-xl text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Descriptions are AI-generated and are not independently verified
-            facts about the property.
-          </p>
-        </header>
+    <Container component="main" maxWidth={false} sx={pageSx}>
+      <Stack component="header" spacing={1.5}>
+        <Typography variant="h4" component="h1">
+          trivago gallery
+        </Typography>
+        <Typography color="text.secondary" sx={{ maxWidth: "36rem" }}>
+          A Next.js example for trivago. Choosing an accommodation opens the photo
+          gallery with an intercepting route, so this page stays behind it.
+          Opening the accommodation URL directly shows the same gallery through
+          a parallel route. The gallery loads lazily in Suspense and does not
+          block the rest of the page.
+        </Typography>
+      </Stack>
+      <Stack component="section" spacing={2.5} aria-labelledby="accommodation-intro">
+        <HomeAccommodationIntro />
         <Suspense fallback={<HighlightsSkeleton />}>
           <HighlightsSection nsid={SAMPLE_ACCOMMODATION} />
         </Suspense>
-      </main>
-    </div>
+      </Stack>
+    </Container>
   );
 }

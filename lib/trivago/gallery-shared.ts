@@ -50,6 +50,15 @@ export function groupTitles(groups: Array<{ ns: number; id: number }>): string[]
   ];
 }
 
+export function decodeImageId(value: string): string | null {
+  try {
+    const decoded = decodeURIComponent(value);
+    return decoded.length > 0 ? decoded : null;
+  } catch {
+    return null;
+  }
+}
+
 export function accommodationPath(ns: number, id: number): string {
   return `/accommodation/${ns}/${id}`;
 }

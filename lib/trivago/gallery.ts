@@ -13,10 +13,13 @@ import {
 } from "@/lib/trivago/apollo";
 import {
   accommodationPath as accommodationPathFor,
+  decodeImageId,
   galleryImageUrl,
   groupTitles,
   photoPath as photoPathFor,
 } from "@/lib/trivago/gallery-shared";
+
+export { decodeImageId };
 
 export { galleryImageUrl };
 import type { Nsid } from "@/lib/trivago/highlights";
@@ -67,7 +70,6 @@ export type GalleryImage = {
   imageId: string;
   width: number;
   height: number;
-  hasSize: boolean;
   advertisers: string[];
   groups: Nsid[];
   srcTile: string | null;
@@ -151,15 +153,6 @@ export async function photoPageTitle(
   return `${titles.join(", ")} · Accommodation ${nsid.ns}/${nsid.id}`;
 }
 
-export function decodeImageId(value: string): string | null {
-  try {
-    const decoded = decodeURIComponent(value);
-    return decoded.length > 0 ? decoded : null;
-  } catch {
-    return null;
-  }
-}
-
 export function accommodationPath(nsid: Nsid): string {
   return accommodationPathFor(nsid.ns, nsid.id);
 }
@@ -234,7 +227,6 @@ function readImage(value: unknown): {
   urlTail: string;
   width: number;
   height: number;
-  hasSize: boolean;
   advertisers: string[];
   groups: Nsid[];
 } | null {
@@ -256,7 +248,6 @@ function readImage(value: unknown): {
     urlTail,
     width: width ?? 4,
     height: height ?? 3,
-    hasSize: width !== null && height !== null,
     advertisers: readAdvertisers(value.source),
     groups: readGroups(value.tagGroupings),
   };
@@ -435,7 +426,6 @@ async function withSources(
     imageId: image.imageId,
     width: image.width,
     height: image.height,
-    hasSize: image.hasSize,
     advertisers: image.advertisers,
     groups: image.groups,
     srcTile: usable ? galleryImageUrl(image.urlTail, 480) : null,

@@ -8,7 +8,7 @@ export default function Page({
   return (
     <PhotoModal>
       <Suspense fallback={<GallerySkeleton />}>
-        <GallerySection params={params} />
+        <GallerySection params={params} presentation="modal" />
       </Suspense>
     </PhotoModal>
   );

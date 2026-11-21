@@ -1,23 +1,42 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
+import Container from "@mui/material/Container";
+import Divider from "@mui/material/Divider";
+import Stack from "@mui/material/Stack";
 import { notFound } from "next/navigation";
 import {
   GallerySection,
   GallerySkeleton,
 } from "@/components/gallery-section";
 import {
+  AccommodationHighlightsFallback,
   HighlightsSection,
-  HighlightsSkeleton,
+  HighlightsSectionHeader,
 } from "@/components/highlights-section";
+import { accommodationLabel } from "@/lib/trivago/accommodation-name";
 import { readRouteNsid } from "@/lib/trivago/gallery";
+
+const pageSx = {
+  flex: 1,
+  display: "flex",
+  flexDirection: "column",
+  gap: 6,
+  width: "100%",
+  maxWidth: "72rem",
+  mx: "auto",
+  px: 3,
+  py: 8,
+} as const;
 
 export async function generateMetadata({
   params,
 }: PageProps<"/accommodation/[ns]/[id]">): Promise<Metadata> {
   const { ns, id } = await params;
+  const nsid = readRouteNsid(ns, id);
+  const label = nsid ? await accommodationLabel(nsid) : `${ns}/${id}`;
   return {
-    title: `Accommodation ${ns}/${id}`,
-    description: `Photos and highlights for accommodation ${ns}/${id}.`,
+    title: label,
+    description: `Photos and accommodation details for ${label}.`,
   };
 }
 
@@ -32,17 +51,13 @@ async function HighlightsForAccommodation({
     notFound();
   }
 
+  const displayName = await accommodationLabel(nsid);
+
   return (
-    <section className="flex flex-col gap-4">
-      <h2 className="text-2xl font-semibold tracking-tight text-black dark:text-zinc-50">
-        Highlights
-      </h2>
-      <p className="max-w-xl text-base leading-7 text-zinc-600 dark:text-zinc-400">
-        Descriptions are AI-generated and are not independently verified facts
-        about the property.
-      </p>
+    <Stack component="section" spacing={2.5} id="accommodation" aria-labelledby="accommodation-intro">
+      <HighlightsSectionHeader context="accommodation" displayName={displayName} />
       <HighlightsSection nsid={nsid} />
-    </section>
+    </Stack>
   );
 }
 
@@ -50,15 +65,14 @@ export default function Page({
   params,
 }: PageProps<"/accommodation/[ns]/[id]">) {
   return (
-    <div className="flex flex-1 flex-col bg-zinc-50 font-sans dark:bg-black">
-      <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-12 px-6 py-16">
-        <Suspense fallback={<GallerySkeleton />}>
-          <GallerySection params={params} />
-        </Suspense>
-        <Suspense fallback={<HighlightsSkeleton />}>
-          <HighlightsForAccommodation params={params} />
-        </Suspense>
-      </main>
-    </div>
+    <Container component="main" maxWidth={false} sx={pageSx}>
+      <Suspense fallback={<GallerySkeleton />}>
+        <GallerySection params={params} presentation="page" />
+      </Suspense>
+      <Divider sx={{ borderStyle: "dashed" }} />
+      <Suspense fallback={<AccommodationHighlightsFallback />}>
+        <HighlightsForAccommodation params={params} />
+      </Suspense>
+    </Container>
   );
 }

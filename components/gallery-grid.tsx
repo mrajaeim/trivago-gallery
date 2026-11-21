@@ -1,7 +1,15 @@
 "use client";
 
+import Alert from "@mui/material/Alert";
+import Box from "@mui/material/Box";
+import Chip from "@mui/material/Chip";
+import MuiLink from "@mui/material/Link";
+import Paper from "@mui/material/Paper";
+import Skeleton from "@mui/material/Skeleton";
+import Stack from "@mui/material/Stack";
+import Typography from "@mui/material/Typography";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { useState } from "react";
 import { CdnImage } from "@/components/cdn-image";
 import {
   groupLabel,
@@ -17,6 +25,86 @@ function groupKey(group: { ns: number; id: number }) {
 
 function sourceLine(advertisers: string[]) {
   return advertisers.length > 0 ? advertisers.join(", ") : null;
+}
+
+const ROW_PATTERN = [
+  { count: 3, height: 155 },
+  { count: 2, height: 235 },
+] as const;
+
+function placeTiles(images: GalleryTile[]) {
+  const placed: Array<{ image: GalleryTile; height: number; span: number }> =
+    [];
+  let index = 0;
+  let pattern = 0;
+
+  while (index < images.length) {
+    const spec = ROW_PATTERN[pattern % ROW_PATTERN.length];
+    const slice = images.slice(index, index + spec.count);
+    const span = 6 / slice.length;
+    for (const image of slice) {
+      placed.push({ image, height: spec.height, span });
+    }
+    index += slice.length;
+    pattern += 1;
+  }
+
+  return placed;
+}
+
+const FILTER_SKELETON = [
+  ["a", 2, 155],
+  ["b", 2, 155],
+  ["c", 2, 155],
+  ["d", 3, 235],
+  ["e", 3, 235],
+  ["f", 2, 155],
+  ["g", 2, 155],
+  ["h", 2, 155],
+] as const;
+
+function FilterGridSkeleton() {
+  return (
+    <Box
+      aria-hidden="true"
+      sx={{
+        display: "grid",
+        gap: 1.5,
+        gridTemplateColumns: "repeat(6, minmax(0, 1fr))",
+      }}
+    >
+      {FILTER_SKELETON.map(([key, span, height]) => (
+        <Skeleton
+          key={key}
+          variant="rounded"
+          sx={{ gridColumn: `span ${span}`, height }}
+        />
+      ))}
+    </Box>
+  );
+}
+
+function FilterChip({
+  label,
+  count,
+  selected,
+  onSelect,
+}: {
+  label: string;
+  count: number;
+  selected: boolean;
+  onSelect: () => void;
+}) {
+  return (
+    <Chip
+      label={`${label} · ${count}`}
+      onClick={onSelect}
+      clickable
+      color={selected ? "primary" : "default"}
+      variant={selected ? "filled" : "outlined"}
+      sx={{ fontWeight: selected ? 600 : 500 }}
+    />
+  );
 }
 
 export function GalleryGrid({
@@ -35,92 +123,200 @@ export function GalleryGrid({
   id: number;
 }) {
   const [filter, setFilter] = useState("all");
+  const [shown, setShown] = useState("all");
+  const [filtering, setFiltering] = useState(false);
+  const filterTimer = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (filterTimer.current !== null) {
+        window.clearTimeout(filterTimer.current);
+      }
+    };
+  }, []);
+
+  const selectFilter = (value: string) => {
+    if (value === filter) {
+      return;
+    }
+    setFilter(value);
+    setFiltering(true);
+    if (filterTimer.current !== null) {
+      window.clearTimeout(filterTimer.current);
+    }
+    filterTimer.current = window.setTimeout(() => {
+      setShown(value);
+      setFiltering(false);
+      filterTimer.current = null;
+    }, 280);
+  };
+
   const visible =
-    filter === "all"
+    shown === "all"
       ? images
       : images.filter((image) =>
-          image.groups.some((group) => groupKey(group) === filter),
+          image.groups.some((group) => groupKey(group) === shown),
         );
+  const placed = placeTiles(visible);
+  const positionById = new Map(
+    images.map((image, index) => [image.imageId, index + 1]),
+  );
+  const activeGroup = groups.find((group) => groupKey(group) === filter);
+  const areaLabel =
+    filter === "all"
+      ? "all areas"
+      : activeGroup
+        ? groupLabel(activeGroup.ns, activeGroup.id)
+        : "this area";
+  const summary = filtering
+    ? `Loading ${areaLabel} photos.`
+    : visible.length === 0
+      ? `No photos from ${areaLabel} are in the loaded set.`
+      : filter === "all"
+        ? `Showing ${visible.length} photo${visible.length === 1 ? "" : "s"}.`
+        : `Showing ${visible.length} of ${activeGroup?.imageCount ?? visible.length} ${areaLabel} photo${visible.length === 1 ? "" : "s"}.`;
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap gap-2" role="group" aria-label="Photo groups">
-        <button
-          type="button"
-          aria-pressed={filter === "all"}
-          className={`rounded-full px-3 py-1.5 text-sm font-medium ring-1 ring-black/10 dark:ring-white/15 ${
-            filter === "all"
-              ? "bg-black text-white dark:bg-white dark:text-black"
-              : "bg-white text-zinc-700 hover:bg-zinc-100 dark:bg-zinc-950 dark:text-zinc-200 dark:hover:bg-zinc-900"
-          }`}
-          onClick={() => setFilter("all")}
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}>
+      <Stack spacing={1.25}>
+        <Typography
+          variant="overline"
+          color="text.secondary"
+          sx={{ lineHeight: 1.2, letterSpacing: "0.08em" }}
         >
-          All · {totalImageCount}
-        </button>
-        {groups.map((group) => {
-          const key = groupKey(group);
-          const selected = filter === key;
-          return (
-            <button
-              key={key}
-              type="button"
-              aria-pressed={selected}
-              className={`rounded-full px-3 py-1.5 text-sm font-medium ring-1 ring-black/10 dark:ring-white/15 ${
-                selected
-                  ? "bg-black text-white dark:bg-white dark:text-black"
-                  : "bg-white text-zinc-700 hover:bg-zinc-100 dark:bg-zinc-950 dark:text-zinc-200 dark:hover:bg-zinc-900"
-              }`}
-              onClick={() => setFilter(key)}
-            >
-              {groupLabel(group.ns, group.id)} · {group.imageCount}
-            </button>
-          );
-        })}
-      </div>
+          Filter by area
+        </Typography>
+        <Stack
+          direction="row"
+          role="group"
+          aria-label="Photo groups"
+          useFlexGap
+          spacing={1}
+          sx={{ flexWrap: "wrap" }}
+        >
+          <FilterChip
+            label="All"
+            count={totalImageCount}
+            selected={filter === "all"}
+            onSelect={() => selectFilter("all")}
+          />
+          {groups.map((group) => {
+            const key = groupKey(group);
+            return (
+              <FilterChip
+                key={key}
+                label={groupLabel(group.ns, group.id)}
+                count={group.imageCount}
+                selected={filter === key}
+                onSelect={() => selectFilter(key)}
+              />
+            );
+          })}
+        </Stack>
+        <Typography variant="body2" color="text.secondary" aria-live="polite">
+          {summary}
+        </Typography>
+      </Stack>
       {partial ? (
-        <p className="text-sm text-zinc-500 dark:text-zinc-400">
-          Showing the first {images.length} of {totalImageCount} photos.
-        </p>
+        <Alert severity="info" variant="outlined" sx={{ py: 0.5 }}>
+          This page loaded the first {images.length} of {totalImageCount} photos. Category counts
+          reflect the full gallery.
+        </Alert>
       ) : null}
-      {visible.length === 0 ? (
-        <p className="rounded-2xl border border-black/8 bg-white p-5 text-zinc-600 dark:border-white/12 dark:bg-zinc-950 dark:text-zinc-400">
+      {filtering ? (
+        <FilterGridSkeleton />
+      ) : visible.length === 0 ? (
+        <Alert severity="info">
           No photos in this group were in the loaded page.
-        </p>
+        </Alert>
       ) : (
-        <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-          {visible.map((image) => {
+        <Box
+          component="ul"
+          sx={{
+            display: "grid",
+            gap: 1.5,
+            gridTemplateColumns: "repeat(6, minmax(0, 1fr))",
+            listStyle: "none",
+            m: 0,
+            p: 0,
+          }}
+        >
+          {placed.map(({ image, height, span }) => {
             const source = sourceLine(image.advertisers);
-            const position =
-              images.findIndex((item) => item.imageId === image.imageId) + 1;
+            const position = positionById.get(image.imageId) ?? 0;
             const titles = groupTitles(image.groups);
             const subject = titles.length > 0 ? `${titles.join(", ")} ` : "";
             const label = `Open ${subject}photo ${position}${source ? `, ${source}` : ""}`;
             return (
-              <li key={image.imageId}>
-                <Link
-                  href={photoPath(ns, id, image.imageId)}
-                  scroll={false}
-                  aria-label={label}
-                  className="block overflow-hidden rounded-2xl ring-1 ring-black/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black dark:ring-white/15 dark:focus-visible:outline-white"
+              <Box
+                component="li"
+                key={image.imageId}
+                sx={{ gridColumn: `span ${span}`, height, minWidth: 0 }}
+              >
+                <Paper
+                  variant="outlined"
+                  sx={{
+                    height: "100%",
+                    overflow: "hidden",
+                    borderRadius: 2,
+                    transition: (theme) =>
+                      theme.transitions.create(["box-shadow", "transform"], {
+                        duration: theme.transitions.duration.shortest,
+                      }),
+                    "&:hover": {
+                      boxShadow: 2,
+                      transform: "scale(1.01)",
+                    },
+                    "&:focus-within": {
+                      outline: 2,
+                      outlineColor: "primary.main",
+                      outlineOffset: 2,
+                    },
+                  }}
                 >
-                  <CdnImage
-                    src={image.src}
-                    width={image.width}
-                    height={image.height}
-                    alt=""
-                    className="h-auto w-full object-cover"
-                  />
-                  {!image.src && source ? (
-                    <span className="block px-3 py-2 text-sm text-zinc-600 dark:text-zinc-400">
-                      {source}
-                    </span>
-                  ) : null}
-                </Link>
-              </li>
+                  <MuiLink
+                    component={Link}
+                    href={photoPath(ns, id, image.imageId)}
+                    scroll={false}
+                    aria-label={label}
+                    underline="none"
+                    color="inherit"
+                    sx={{ display: "block", height: "100%", position: "relative" }}
+                  >
+                    <CdnImage
+                      src={image.src}
+                      width={image.width}
+                      height={image.height}
+                      alt=""
+                      sx={{
+                        aspectRatio: "auto",
+                        height: "100%",
+                        objectFit: "cover",
+                      }}
+                    />
+                    {!image.src && source ? (
+                      <Typography
+                        variant="body2"
+                        color="text.secondary"
+                        sx={{
+                          position: "absolute",
+                          right: 0,
+                          bottom: 0,
+                          left: 0,
+                          px: 1.5,
+                          py: 1,
+                        }}
+                      >
+                        {source}
+                      </Typography>
+                    ) : null}
+                  </MuiLink>
+                </Paper>
+              </Box>
             );
           })}
-        </ul>
+        </Box>
       )}
-    </div>
+    </Box>
   );
 }
