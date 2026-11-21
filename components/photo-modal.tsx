@@ -2,7 +2,6 @@
 
 import CloseIcon from "@mui/icons-material/Close";
 import FullscreenIcon from "@mui/icons-material/Fullscreen";
-import FullscreenExitIcon from "@mui/icons-material/FullscreenExit";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import ShareIcon from "@mui/icons-material/Share";
 import Box from "@mui/material/Box";
@@ -96,6 +95,7 @@ function ToolbarIconButton({
   onClick,
   disabled,
   href,
+  newTab = false,
   highlight,
   wrapperSx,
   children,
@@ -104,6 +104,7 @@ function ToolbarIconButton({
   onClick?: () => void;
   disabled?: boolean;
   href?: string;
+  newTab?: boolean;
   highlight?: boolean;
   wrapperSx?: SystemStyleObject<Theme>;
   children: ReactNode;
@@ -116,8 +117,8 @@ function ToolbarIconButton({
     <IconButton
       component="a"
       href={href}
-      target="_blank"
-      rel="noopener noreferrer"
+      target={newTab ? "_blank" : undefined}
+      rel={newTab ? "noopener noreferrer" : undefined}
       aria-label={label}
       disabled={disabled}
       sx={buttonSx}
@@ -141,17 +142,13 @@ function ToolbarIconButton({
 
 export function PhotoModalToolbar({
   href,
-  fullScreen,
   shareStatus,
   onShare,
-  onToggleFullScreen,
   onClose,
 }: {
   href: string | null;
-  fullScreen: boolean;
   shareStatus: "idle" | "copied" | "failed";
   onShare: () => void;
-  onToggleFullScreen: () => void;
   onClose: () => void;
 }) {
   const destinationReady = href !== null;
@@ -161,7 +158,6 @@ export function PhotoModalToolbar({
       : shareStatus === "failed"
         ? "Share failed"
         : "Share";
-  const fullScreenLabel = fullScreen ? "Exit full screen" : "Full screen";
 
   return (
     <Stack
@@ -179,15 +175,17 @@ export function PhotoModalToolbar({
           <ShareIcon fontSize="small" />
         </ToolbarIconButton>
         <ToolbarIconButton
-          label={fullScreenLabel}
-          onClick={onToggleFullScreen}
+          label="Full screen"
+          href={destinationReady && href ? href : undefined}
+          disabled={!destinationReady}
           wrapperSx={{ display: { xs: "none", sm: "inline-flex" } }}
         >
-          {fullScreen ? <FullscreenExitIcon fontSize="small" /> : <FullscreenIcon fontSize="small" />}
+          <FullscreenIcon fontSize="small" />
         </ToolbarIconButton>
         <ToolbarIconButton
           label="Open in new tab"
           href={destinationReady && href ? href : undefined}
+          newTab
           disabled={!destinationReady}
         >
           <OpenInNewIcon fontSize="small" />
@@ -221,16 +219,12 @@ export function PhotoModalToolbar({
 }
 
 function RoutedPhotoModalToolbar({
-  fullScreen,
   shareStatus,
   onShareResult,
-  onToggleFullScreen,
   onClose,
 }: {
-  fullScreen: boolean;
   shareStatus: "idle" | "copied" | "failed";
   onShareResult: (result: "copied" | "failed") => void;
-  onToggleFullScreen: () => void;
   onClose: () => void;
 }) {
   const params = useParams<{ ns: string; id: string }>();
@@ -239,7 +233,6 @@ function RoutedPhotoModalToolbar({
   return (
     <PhotoModalToolbar
       href={href}
-      fullScreen={fullScreen}
       shareStatus={shareStatus}
       onShare={() => {
         void sharePage(href).then(
@@ -251,7 +244,6 @@ function RoutedPhotoModalToolbar({
           () => onShareResult("failed"),
         );
       }}
-      onToggleFullScreen={onToggleFullScreen}
       onClose={onClose}
     />
   );
@@ -267,7 +259,6 @@ export function PhotoModal({
   const router = useRouter();
   const slotRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(true);
-  const [fullScreen, setFullScreen] = useState(false);
   const [shareStatus, setShareStatus] = useState<"idle" | "copied" | "failed">(
     "idle",
   );
@@ -304,7 +295,6 @@ export function PhotoModal({
     <Box ref={slotRef}>
       <Dialog
         open={open}
-        fullScreen={fullScreen}
         fullWidth
         maxWidth={false}
         scroll="paper"
@@ -316,21 +306,21 @@ export function PhotoModal({
               display: "flex",
               flexDirection: "column",
               overflow: "hidden",
-              m: { xs: 0, sm: fullScreen ? 0 : "0.75rem" },
+              m: { xs: 0, sm: "0.75rem" },
               width: {
                 xs: "100%",
-                sm: fullScreen ? "100%" : "min(100% - 1.5rem, 56rem)",
+                sm: "min(100% - 1.5rem, 56rem)",
               },
-              maxWidth: { xs: "100%", sm: fullScreen ? "100%" : "56rem" },
+              maxWidth: { xs: "100%", sm: "56rem" },
               height: {
                 xs: "100dvh",
-                sm: fullScreen ? "100%" : "calc(100dvh - 1.5rem)",
+                sm: "calc(100dvh - 1.5rem)",
               },
               maxHeight: {
                 xs: "100dvh",
-                sm: fullScreen ? "100%" : "calc(100dvh - 1.5rem)",
+                sm: "calc(100dvh - 1.5rem)",
               },
-              borderRadius: { xs: 0, sm: fullScreen ? 0 : 2 },
+              borderRadius: { xs: 0, sm: 2 },
             },
           },
         }}
@@ -357,19 +347,15 @@ export function PhotoModal({
             fallback={
               <PhotoModalToolbar
                 href={null}
-                fullScreen={fullScreen}
                 shareStatus={shareStatus}
                 onShare={() => undefined}
-                onToggleFullScreen={() => setFullScreen((current) => !current)}
                 onClose={close}
               />
             }
           >
             <RoutedPhotoModalToolbar
-              fullScreen={fullScreen}
               shareStatus={shareStatus}
               onShareResult={(result) => setShareStatus(result)}
-              onToggleFullScreen={() => setFullScreen((current) => !current)}
               onClose={close}
             />
           </Suspense>

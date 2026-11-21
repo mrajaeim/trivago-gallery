@@ -23,19 +23,17 @@ describe("PhotoModalToolbar", () => {
     const html = renderToStaticMarkup(
       <PhotoModalToolbar
         href="/accommodation/100/102762"
-        fullScreen={false}
         shareStatus="idle"
         onShare={() => undefined}
-        onToggleFullScreen={() => undefined}
         onClose={() => undefined}
       />,
     );
 
     expect(html).toContain('aria-label="Share"');
-    expect(html).toContain('aria-label="Full screen"');
+    expect(html).toContain('href="/accommodation/100/102762" aria-label="Full screen"');
     expect(html).toContain('aria-label="Open in new tab"');
-    expect(html).toContain('href="/accommodation/100/102762"');
     expect(html).toContain('target="_blank"');
+    expect(html).not.toMatch(/aria-label="Full screen"[^>]*target="_blank"/);
     expect(html).not.toMatch(/aria-label="Share"[^>]*\sdisabled/);
   });
 
@@ -43,10 +41,8 @@ describe("PhotoModalToolbar", () => {
     const html = renderToStaticMarkup(
       <PhotoModalToolbar
         href={null}
-        fullScreen={false}
         shareStatus="idle"
         onShare={() => undefined}
-        onToggleFullScreen={() => undefined}
         onClose={() => undefined}
       />,
     );
@@ -57,6 +53,7 @@ describe("PhotoModalToolbar", () => {
     expect(html).toContain('aria-label="Close"');
     expect(html).not.toContain('href="#"');
     expect(html).toContain('disabled="" aria-label="Share"');
+    expect(html).toContain('disabled="" aria-label="Full screen"');
     expect(html).toContain('disabled="" aria-label="Open in new tab"');
   });
 });
