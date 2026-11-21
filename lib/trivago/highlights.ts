@@ -89,8 +89,6 @@ export type HighlightView = {
   description: string;
   sentiment: HighlightSentiment;
   imageSrc: string | null;
-  aspectRating: number | null;
-  aspectReviewLabel: string | null;
 };
 
 export type HighlightsResult =
@@ -113,23 +111,6 @@ function readImageSrc(highlight: Record<string, unknown>): string | null {
   return urlTail ? galleryImageUrl(urlTail, 800) : null;
 }
 
-function readAspectRating(value: Record<string, unknown>): {
-  aspectRating: number | null;
-  aspectReviewLabel: string | null;
-} {
-  const info = value.scoredAspectThemeRatingInfo;
-  if (!isRecord(info) || typeof info.rating !== "number" || !Number.isFinite(info.rating)) {
-    return { aspectRating: null, aspectReviewLabel: null };
-  }
-
-  const labelRecord = isRecord(info.reviewCountLabel) ? info.reviewCountLabel : null;
-  const translation = labelRecord && isRecord(labelRecord.translation) ? labelRecord.translation : null;
-  return {
-    aspectRating: info.rating,
-    aspectReviewLabel: readString(translation?.value),
-  };
-}
-
 function readHighlight(value: unknown): HighlightView | null {
   if (!isRecord(value)) {
     return null;
@@ -149,7 +130,6 @@ function readHighlight(value: unknown): HighlightView | null {
     description,
     sentiment,
     imageSrc: readImageSrc(value),
-    ...readAspectRating(value),
   };
 }
 
@@ -257,8 +237,8 @@ const loadAccommodationHighlights = cache(
       getAccommodationDetailsInput: { nsids: [nsid] },
       aiGeneratedInput: { sorting: { searchConcepts: [] } },
       includeExtendedFields: true,
-      includeRelativeScore: true,
-      includeRatingInfo: true,
+      includeRelativeScore: false,
+      includeRatingInfo: false,
     };
 
     try {
