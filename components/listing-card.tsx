@@ -176,9 +176,43 @@ function PricePanel({
       </Typography>
     )
   ) : (
-    <Typography variant="body2" sx={{ color: pricePanelInkMuted }}>
-      Nightly rate unavailable
-    </Typography>
+    <Stack spacing={0.35}>
+      <Typography
+        variant="overline"
+        component="p"
+        sx={{
+          color: pricePanelInkMuted,
+          lineHeight: 1,
+          letterSpacing: 0.6,
+          fontSize: { xs: "0.625rem", md: "0.75rem" },
+        }}
+      >
+        Nightly rate
+      </Typography>
+      <Typography
+        component="p"
+        sx={{
+          color: pricePanelInk,
+          fontWeight: 800,
+          lineHeight: 1.15,
+          fontSize: { xs: "1rem", md: "1.25rem" },
+        }}
+      >
+        Unavailable
+      </Typography>
+      <Typography
+        variant="caption"
+        component="p"
+        sx={{
+          color: pricePanelInkMuted,
+          lineHeight: 1.35,
+          display: { xs: "none", md: "block" },
+          maxWidth: "16rem",
+        }}
+      >
+        Partner prices are not listed for this stay.
+      </Typography>
+    </Stack>
   );
 
   const cta = linked ? (
@@ -222,17 +256,19 @@ function PricePanel({
         {priceBlock}
       </Stack>
       <Stack spacing={0.75} sx={{ flexShrink: 0, width: { xs: "auto", md: "100%" } }}>
-        <Typography
-          variant="caption"
-          component="p"
-          sx={{
-            color: pricePanelInkMuted,
-            lineHeight: 1.35,
-            display: { xs: "none", md: "block" },
-          }}
-        >
-          Compare offers from multiple partners
-        </Typography>
+        {amount ? (
+          <Typography
+            variant="caption"
+            component="p"
+            sx={{
+              color: pricePanelInkMuted,
+              lineHeight: 1.35,
+              display: { xs: "none", md: "block" },
+            }}
+          >
+            Compare offers from multiple partners
+          </Typography>
+        ) : null}
         {cta}
       </Stack>
     </Stack>
