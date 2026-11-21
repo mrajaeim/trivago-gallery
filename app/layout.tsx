@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import InitColorSchemeScript from "@mui/material/InitColorSchemeScript";
+import { Geist } from "next/font/google";
+import { ThemeRegistry } from "@/components/theme-registry";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -7,25 +9,20 @@ const geistSans = Geist({
   subsets: ["latin"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
 export const metadata: Metadata = {
-  title: "Accommodation highlights",
-  description: "AI-generated highlights for a trivago accommodation.",
+  title: "trivago gallery",
+  description: "Accommodation and photo gallery demo for trivago.",
 };
 
 export default function RootLayout({ children, modal }: LayoutProps<"/">) {
   return (
-    <html
-      lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-    >
-      <body className="min-h-full flex flex-col">
-        {children}
-        {modal}
+    <html lang="en" className={geistSans.variable} suppressHydrationWarning>
+      <body>
+        <InitColorSchemeScript defaultMode="system" />
+        <ThemeRegistry>
+          {children}
+          {modal}
+        </ThemeRegistry>
       </body>
     </html>
   );
